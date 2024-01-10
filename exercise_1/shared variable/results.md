@@ -1,0 +1,2 @@
+We did not get zero. This happened because of a race condition. We got a race condition where one thread is interrupting the other before it manages to write to the variable. 
+We choose to use mutex to lock and unlock the threads when entering them. If you use semaphore then any other thread open it. 
