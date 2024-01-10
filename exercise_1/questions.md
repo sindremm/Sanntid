@@ -7,7 +7,6 @@ What is the difference between *concurrency* and *parallelism*?
 > Parallelism is when the process is happening at the same time, and concurrency is when they switch between threads and the threads do not act at the same time. 
 
 What is the difference between a *race condition* and a *data race*? 
-TODO:
 > A data race is an error that happens when a thread tries to read from or write to a memory location that is already being written to by another thread.
 A race condition is when the outcome of an operation depends on the timing of two (or more) different threads. 
  
