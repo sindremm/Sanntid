@@ -16,7 +16,7 @@ var full_address = SERVER_IP_ADDRESS + ":" + port
 func main() {
 	fmt.Printf(full_address + "\n")
 
-	go listen2()
+	go listen()
 	time.Sleep(3 * time.Second)
 	send()
 	for i := 0; i < 10; i ++{
@@ -53,7 +53,7 @@ func listen() {
 }
 
 func listen2() {
-	var p = make([]byte, 2048)
+	p := make([]byte, 2048)
 
 	ServerAddr, err := net.ResolveUDPAddr("udp", full_address)
 	if err != nil {
@@ -61,17 +61,13 @@ func listen2() {
 		return
 	}
 
-	conn, err := net.DialUDP("udp", nil, ServerAddr)
-	if err != nil {
-		fmt.Printf("Some error 4 %v", err)
-		return
-	}
-	
-	// _, err = bufio.NewReader(conn).Read(p)
+	conn, err := net.ListenUDP("udp", ServerAddr)
 
-	_, err = conn.Read(p)
+
+
+	n, _ , err := conn.ReadFromUDP(p)
 	if err == nil {
-		fmt.Printf("The message: %s\n", p)
+		fmt.Printf("The message: %s\n", p[:n])
 	} else {
 		fmt.Printf("Some error 2 %v\n", err)
 
