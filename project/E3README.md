@@ -8,7 +8,6 @@ This exercise consists of two parts:
 
 Which part you do first is up to you – you may find it useful to get some code in an editor to realize exactly what parts are missing and will need to be designed and created, or you might find it useful to think long and hard before writing something that might end up getting thrown out. The most likely scenario is a combination of both.
 
-
 Part 1: Running a single elevator
 -------------------------
 
