@@ -8,7 +8,7 @@ import (
 	// "flag"
 	"fmt"
 	// "os"
-	// "time"
+	"time"
 )
 
 // We define some custom struct to send over the network.
@@ -20,6 +20,7 @@ type HelloMsg struct {
 	Iter    int
 }
 
+/*
 // func main() {
 // 	// Our id can be anything. Here we pass it on the command line, using
 // 	//  `go run main.go -id=our_id`
@@ -81,6 +82,95 @@ type HelloMsg struct {
 // 		}
 // 	}
 // }
+*/
+
+type State int
+const (
+	IDLE State = iota
+	MOVING_UP
+	MOVING_DOWN
+    STOPPED
+    DOOR_OPEN
+    OBSTRUCTED
+)
+
+type Elevator struct {  
+    // The buffer values received from the elevio interface 
+    button_order chan elevio.ButtonEvent
+    current_floor chan int
+    is_obstructed chan bool
+    is_stopped chan bool
+
+    //Arrays that show awhich buttons have been pressed
+    up_button_array [4]bool
+    down_button_array [4]bool
+    internal_button_array [4]bool
+
+    // Variable containing the current state
+    internal_state State
+}
+
+
+func makeElevator(buttons_state chan elevio.ButtonEvent, floors chan int, is_obstructed chan bool, is_stopped chan bool) (Elevator) {
+    // Set state to idle
+    var start_state State = IDLE;
+    
+    // Initialize empty button arrays
+    up_array := [4]bool{};
+    down_array := [4]bool{};
+    external_array := [4]bool{};
+
+    return Elevator{buttons_state, floors, is_obstructed, is_stopped, up_array, down_array, external_array, start_state};
+}
+
+func (e Elevator) Main() {
+
+    // TODO: Write state machine
+    for {
+        floor, button := e.readOrder()
+        fmt.Printf("Button floor: %d, button type: %d \n", floor, button)
+        // e.Stop()
+    }
+}
+
+func (e Elevator) readOrder() (floor int, button elevio.ButtonType){
+    order := <- e.button_order
+    order_floor := order.Floor
+    order_button := order.Button
+    
+    return order_floor, order_button
+
+}
+
+
+func (e Elevator) OpenDoor() {
+    elevio.SetDoorOpenLamp(true);
+    time.Sleep(3*time.Second);
+    elevio.SetDoorOpenLamp(false);
+}
+
+func (e Elevator)  MoveToOrder() {
+
+}
+
+/* func (e Elevator) Stop() {
+   elevator_stop := <- e.is_stopped
+        if elevator_stop {
+            switch e.internal_state {
+            case MOVING_UP, MOVING_DOWN:
+                e.internal_state = STOPPED
+                elevio.SetMotorDirection(elevio.MD_Stop)
+                elevio.SetStopLamp(true)
+            
+            case DOOR_OPEN:
+                e.internal_state = STOPPED
+                elevio.SetStopLamp(true)
+            }
+        } else{
+            e.internal_state = IDLE
+            elevio.SetStopLamp(false)
+        }
+} */
 
 func main() {
 
@@ -88,9 +178,8 @@ func main() {
 
     elevio.Init("localhost:15657", numFloors)
     
-    var d elevio.MotorDirection = elevio.MD_Up
-    //elevio.SetMotorDirection(d)
-    
+
+    // Initialize the channels for receiving data from the elevio interface
     drv_buttons := make(chan elevio.ButtonEvent)
     drv_floors  := make(chan int)
     drv_obstr   := make(chan bool)
@@ -101,38 +190,43 @@ func main() {
     go elevio.PollObstructionSwitch(drv_obstr)
     go elevio.PollStopButton(drv_stop)
     
+    // Create elevator and start main loop
+    main_elevator := makeElevator(drv_buttons, drv_floors, drv_obstr, drv_stop)
+    go main_elevator.Main()
+
+    for {}
     
-    for {
-        select {
-        case a := <- drv_buttons:
-            fmt.Printf("%+v\n", a)
-            elevio.SetButtonLamp(a.Button, a.Floor, true)
+    // for {
+    //     select {
+    //     case a := <- drv_buttons:
+    //         fmt.Printf("%+v\n", a)
+    //         elevio.SetButtonLamp(a.Button, a.Floor, true)
             
-        case a := <- drv_floors:
-            fmt.Printf("%+v\n", a)
-            if a == numFloors-1 {
-                d = elevio.MD_Down
-            } else if a == 0 {
-                d = elevio.MD_Up
-            }
-            elevio.SetMotorDirection(d)
+    //     case a := <- drv_floors:
+    //         fmt.Printf("%+v\n", a)
+    //         if a == numFloors-1 {
+    //             d = elevio.MD_Down
+    //         } else if a == 0 {
+    //             d = elevio.MD_Up
+    //         }
+    //         elevio.SetMotorDirection(d)
             
             
-        case a := <- drv_obstr:
-            fmt.Printf("%+v\n", a)
-            if a {
-                elevio.SetMotorDirection(elevio.MD_Stop)
-            } else {
-                elevio.SetMotorDirection(d)
-            }
+    //     case a := <- drv_obstr:
+    //         fmt.Printf("%+v\n", a)
+    //         if a {
+    //             elevio.SetMotorDirection(elevio.MD_Stop)
+    //         } else {
+    //             elevio.SetMotorDirection(d)
+    //         }
             
-        case a := <- drv_stop:
-            fmt.Printf("%+v\n", a)
-            for f := 0; f < numFloors; f++ {
-                for b := elevio.ButtonType(0); b < 3; b++ {
-                    elevio.SetButtonLamp(b, f, false)
-                }
-            }
-        }
-    }  
+    //     case a := <- drv_stop:
+    //         fmt.Printf("%+v\n", a)
+    //         for f := 0; f < numFloors; f++ {
+    //             for b := elevio.ButtonType(0); b < 3; b++ {
+    //                 elevio.SetButtonLamp(b, f, false)
+    //             }
+    //         }
+    //     }
+    // }  
 }
