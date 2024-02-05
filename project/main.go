@@ -135,8 +135,15 @@ type Elevator struct {
 func makeElevator(buttons_state chan elevio.ButtonEvent, floors chan int, is_obstructed chan bool, is_stopped chan bool) (Elevator) {
     // Set state to idle
     var start_state State = IDLE;
-
-    starting_floor := <-floors;
+    
+    // Exception value
+    starting_floor:= -1
+    select {
+    case starting_floor = <-floors: 
+    default:       
+    }
+    
+    fmt.Printf("%d", starting_floor)
     
     // Initialize empty button arrays
     up_array := [4]bool{};
@@ -163,20 +170,25 @@ func (e Elevator) Main() {
 
     // TODO: Write state machine
 
-    for {
-        
-        
+    for {      
         // Check for stop-button press
-        if  <- e.is_stopped {
-            e.Stop()
-            continue
+        select {
+        case stopped:= <- e.is_stopped:
+            if stopped {
+                fmt.Print("Stop")
+                e.Stop()
+                continue
+            }
+        default:
         }
+        
 
         switch state := e.internal_state; state {
         case IDLE:
             e.pickFloor()
 
         case MOVING:
+            fmt.Printf("Moving")
             // Handle orders when at floor
             current_floor := <-e.current_floor
             if current_floor != 1 {
@@ -185,9 +197,11 @@ func (e Elevator) Main() {
             }
 
         case DOOR_OPEN:
+            fmt.Printf("open door")
             e.OpenDoor()
         case OBSTRUCTED:
-            fmt.Printf("hi")
+
+            fmt.Printf("Obstructed")
         }
     }
 }
@@ -233,6 +247,7 @@ func (e Elevator) pickFloor() {
 
 func (e Elevator) addOrders() {
     floor, button := e.readOrder();
+    elevio.SetButtonLamp(button, floor, true)
     switch button {
     case 0:
         e.up_button_array[floor] = true;
@@ -242,6 +257,7 @@ func (e Elevator) addOrders() {
         e.internal_button_array[floor] = true;
     }
 }
+
 
 
 func (e Elevator) readOrder() (floor int, button elevio.ButtonType){
@@ -261,16 +277,22 @@ func (e Elevator) visit_floor() {
         e.internal_button_array[e.at_floor] = false;
         e.internal_state = DOOR_OPEN;
     }
-    
+
+    // Reset internal button
+    elevio.SetButtonLamp(2, e.at_floor, false)
 
     // Remove orders in same direction, and sets door to open
     switch dir := e.moving_direction; dir {
     case UP:
         e.internal_state = DOOR_OPEN;
         e.up_button_array[e.at_floor] = false;
+        // Reset upwards button
+        elevio.SetButtonLamp(0, e.at_floor, false)
     case DOWN:
         e.internal_state = DOOR_OPEN;
         e.down_button_array[e.at_floor] = false;
+        // Reset downwards button
+        elevio.SetButtonLamp(1, e.at_floor, false)
     }
 
 }
@@ -359,6 +381,7 @@ func resetLights() {
     }
 }
 
+
 func main() {
 
 
@@ -376,9 +399,13 @@ func main() {
     go elevio.PollObstructionSwitch(drv_obstr)
     go elevio.PollStopButton(drv_stop)
     
+
     // Create elevator and start main loop
     main_elevator := makeElevator(drv_buttons, drv_floors, drv_obstr, drv_stop)
+    
     go main_elevator.Main()
+    go main_elevator.addOrders()
+    
 
     for {}
     
