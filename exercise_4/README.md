@@ -17,8 +17,11 @@ The process pair mechanism on its own forms one of the three parts of making bug
 Some engineering questions, before you continue:
 
 - Why would we aim to detect success in results, instead of the more classical way of detecting errors/failures?
+  - We know how the program is supposed to act when it works, but we can't know all the ways the program can fail. Therefore it's easier to check if the program is working as intended as opposed to if it is failing.
 - Why would we want to self-terminate, instead of handling the error immediately in the "primary" (as opposed to deferring it to the backup as it "spins up")?
+  - If the program already has an error, then it means that something already has gone wrong in the program. If we try to handle the error in the 'primary' we might just end up with the same error. By restarting it is possible to escape the part of the process that went wrong, making it possible for us to handle the error.
 - Is there any reason to prefer a process pair style, as opposed to making a separate supervisor-like program whose sole purpose is to restart the main program?
+  - Because of the nature of distributed systems, the separate supervisor program is also prone to failing. If the supervisor crashes before the main program, then there is nothing capable of restarting the program.
 
 ---
 
