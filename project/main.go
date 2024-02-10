@@ -191,7 +191,7 @@ func (e Elevator) Main() {
             fmt.Printf("Moving")
             // Handle orders when at floor
             current_floor := <-e.current_floor
-            if current_floor != 1 {
+            if current_floor != -1 {
                 e.at_floor = current_floor
                 e.visit_floor()
             }
