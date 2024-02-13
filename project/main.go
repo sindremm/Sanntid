@@ -105,10 +105,10 @@ const (
 
 type Elevator struct {  
     // The buffer values received from the elevio interface 
-    button_order chan elevio.ButtonEvent
-    current_floor chan int
-    is_obstructed chan bool
-    is_stopped chan bool
+    button_order elevio.ButtonEvent
+    current_floor int
+    is_obstructed bool
+    is_stopped bool
 
     // Arrays that show awhich buttons have been pressed
     up_button_array [4]bool
@@ -132,16 +132,14 @@ type Elevator struct {
 }
 
 
-func makeElevator(buttons_state chan elevio.ButtonEvent, floors chan int, is_obstructed chan bool, is_stopped chan bool) (Elevator) {
+func makeElevator() (Elevator) {
     // Set state to idle
     var start_state State = IDLE;
+
     
     // Exception value
     starting_floor:= -1
-    select {
-    case starting_floor = <-floors: 
-    default:       
-    }
+
     
     fmt.Printf("%d", starting_floor)
     
@@ -151,10 +149,10 @@ func makeElevator(buttons_state chan elevio.ButtonEvent, floors chan int, is_obs
     internal_array := [4]bool{};
 
     return Elevator{
-        buttons_state,
-        floors,
-        is_obstructed,
-        is_stopped,
+        elevio.ButtonEvent{},
+        -1,
+        false,
+        false,
         up_array,
         down_array,
         internal_array,
@@ -170,17 +168,16 @@ func (e Elevator) Main() {
 
     // TODO: Write state machine
 
+
     for {      
         // Check for stop-button press
-        select {
-        case stopped:= <- e.is_stopped:
-            if stopped {
-                fmt.Print("Stop")
-                e.Stop()
-                continue
-            }
-        default:
+
+        if e.is_stopped {
+            fmt.Print("Stop")
+            e.Stop()
+            continue
         }
+
         
 
         switch state := e.internal_state; state {
@@ -190,9 +187,9 @@ func (e Elevator) Main() {
         case MOVING:
             fmt.Printf("Moving")
             // Handle orders when at floor
-            current_floor := <-e.current_floor
-            if current_floor != 1 {
-                e.at_floor = current_floor
+            
+            if e.current_floor != 1 {
+                e.at_floor = e.current_floor
                 e.visit_floor()
             }
 
@@ -204,6 +201,21 @@ func (e Elevator) Main() {
             fmt.Printf("Obstructed")
         }
     }
+}
+
+func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_floor chan int, is_obstructed chan bool, is_stopped chan bool) {
+    // Read from the channels and put data into variables
+    select {
+    case bo := <-button_order:
+        e.button_order = bo
+    case cf := <-current_floor:
+        e.current_floor = cf
+    case io := <-is_obstructed:
+        e.is_obstructed = io
+    case is := <-is_stopped:
+        e.is_stopped = is
+    }
+
 }
 
 func (e Elevator) pickFloor() {
@@ -261,7 +273,7 @@ func (e Elevator) addOrders() {
 
 
 func (e Elevator) readOrder() (floor int, button elevio.ButtonType){
-    order := <- e.button_order;
+    order := e.button_order;
     order_floor := order.Floor;
     order_button := order.Button;
     
@@ -333,7 +345,7 @@ func (e Elevator)  MoveToOrder() {
 func (e Elevator) Stop() {
     // Handles stopping
 
-    elevator_stop := <- e.is_stopped;
+    elevator_stop := e.is_stopped;
 
     // Handle the current state
     switch e.internal_state {
@@ -401,8 +413,9 @@ func main() {
     
 
     // Create elevator and start main loop
-    main_elevator := makeElevator(drv_buttons, drv_floors, drv_obstr, drv_stop)
+    main_elevator := makeElevator()
     
+    go main_elevator.readChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
     go main_elevator.Main()
     go main_elevator.addOrders()
     
