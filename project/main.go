@@ -104,10 +104,10 @@ const (
 
 type Elevator struct {  
     // The buffer values received from the elevio interface 
-    button_order chan elevio.ButtonEvent
-    current_floor chan int
-    is_obstructed chan bool
-    is_stopped chan bool
+    button_order elevio.ButtonEvent
+    current_floor int
+    is_obstructed bool
+    is_stopped bool
 
     // Arrays that show awhich buttons have been pressed
     up_button_array [4]bool
@@ -131,18 +131,14 @@ type Elevator struct {
 }
 
 
-func makeElevator(buttons_state chan elevio.ButtonEvent, floors chan int, is_obstructed chan bool, is_stopped chan bool) (Elevator) {
+func makeElevator() (Elevator) {
     // Set state to idle
     var start_state State = IDLE;
+
     
     // Exception value
     starting_floor:= -1
-    select {
-    case starting_floor = <-floors: 
-    default:       
-    }
-    
-    fmt.Printf("%d", starting_floor)
+
     
     // Initialize empty button arrays
     up_array := [4]bool{};
@@ -150,10 +146,10 @@ func makeElevator(buttons_state chan elevio.ButtonEvent, floors chan int, is_obs
     internal_array := [4]bool{};
 
     return Elevator{
-        buttons_state,
-        floors,
-        is_obstructed,
-        is_stopped,
+        elevio.ButtonEvent{},
+        -1,
+        false,
+        false,
         up_array,
         down_array,
         internal_array,
@@ -169,8 +165,10 @@ func (e Elevator) Main() {
 
     // TODO: Write state machine
 
+    fmt.Printf("%s", e.internal_state)
     for {      
         // Check for stop-button press
+<<<<<<< HEAD
         stopped:= <- e.is_stopped
         
             if stopped {
@@ -181,28 +179,72 @@ func (e Elevator) Main() {
         
         
         
+=======
+
+        if e.is_stopped {
+            fmt.Print("Stop")
+            e.Stop()
+            continue
+        }
+>>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
 
         switch state := e.internal_state; state {
         case IDLE:
+            fmt.Printf("Idle")
             e.pickFloor()
 
         case MOVING:
             fmt.Printf("Moving")
             // Handle orders when at floor
+<<<<<<< HEAD
             current_floor := <-e.current_floor
             if current_floor != 1 {
                 e.at_floor = current_floor
+=======
+            
+            if e.current_floor != 1 {
+                e.at_floor = e.current_floor
+>>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
                 e.visit_floor()
             }
 
         case DOOR_OPEN:
             fmt.Printf("open door")
             e.OpenDoor()
+<<<<<<< HEAD
+=======
+        case OBSTRUCTED:
+            fmt.Printf("Obstructed")
+>>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
         }
     }
 }
 
+<<<<<<< HEAD
 
+=======
+func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_floor chan int, is_obstructed chan bool, is_stopped chan bool) {
+    // Read from the channels and put data into variables
+    for {
+        select {
+        case bo := <-button_order:
+            // Transform order to readable format
+            floor, btn := e.readOrder(bo)
+            // Add order to internal array and set lights
+            e.addOrders(floor, btn)
+
+        case cf := <-current_floor:
+            e.current_floor = cf
+
+        case io := <-is_obstructed:
+            e.is_obstructed = io
+
+        case is := <-is_stopped:
+            e.is_stopped = is
+        }
+    }
+}
+>>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
 
 func (e Elevator) pickFloor() {
     // Sets new target to closest floor, prioritizing floors above
@@ -243,9 +285,9 @@ func (e Elevator) pickFloor() {
     e.target_floor = new_target
 }
 
-func (e Elevator) addOrders() {
-    floor, button := e.readOrder();
-    elevio.SetButtonLamp(button, floor, true)
+func (e Elevator) addOrders(floor int, button elevio.ButtonType) {
+    // Set elevator lights
+    elevio.SetButtonLamp(button, floor, true);
     switch button {
     case 0:
         e.up_button_array[floor] = true;
@@ -254,14 +296,14 @@ func (e Elevator) addOrders() {
     case 2:
         e.internal_button_array[floor] = true;
     }
+
 }
 
 
 
-func (e Elevator) readOrder() (floor int, button elevio.ButtonType){
-    order := <- e.button_order;
-    order_floor := order.Floor;
-    order_button := order.Button;
+func (e Elevator) readOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType){
+    order_floor := button_order.Floor;
+    order_button := button_order.Button;
     
     return order_floor, order_button
 }
@@ -340,6 +382,7 @@ func (e Elevator)  MoveToOrder() {
 func (e Elevator) Stop() {
     // Handles stopping
 
+<<<<<<< HEAD
     elevator_stop := <- e.is_stopped
 
     if e.internal_state == AT_FLOOR{
@@ -359,6 +402,9 @@ func (e Elevator) Stop() {
     }
 
 }
+=======
+    elevator_stop := e.is_stopped;
+>>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
 
     // Handle the current state
     /*
@@ -434,10 +480,12 @@ func main() {
     
 
     // Create elevator and start main loop
-    main_elevator := makeElevator(drv_buttons, drv_floors, drv_obstr, drv_stop)
+    main_elevator := makeElevator()
     
+    // Start threads
+    go main_elevator.readChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
     go main_elevator.Main()
-    go main_elevator.addOrders()
+    
     
 
     for {}
