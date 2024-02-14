@@ -8,8 +8,8 @@ import (
 	// "flag"
 	"fmt"
 	// "os"
+	"sync"
 	"time"
-    "sync"
 )
 
 // We define some custom struct to send over the network.
@@ -84,11 +84,10 @@ func makeElevator() Elevator {
 	down_array := [4]bool{}
 	internal_array := [4]bool{}
 
-
-    // Pointer values
-    floor_number := -1
-    is_obstructed := false
-    is_stopped := false
+	// Pointer values
+	floor_number := -1
+	is_obstructed := false
+	is_stopped := false
 
 	return Elevator{
 		&elevio.ButtonEvent{},
@@ -113,7 +112,9 @@ func (e Elevator) Main() {
 	fmt.Printf("%s", e.internal_state)
 	for {
 		// Check for stop-button press
-		fmt.Printf("Stopped: %t \n", *e.is_stopped)
+		//fmt.Printf("Stopped: %t \n", *e.is_stopped)
+		//fmt.Printf("Obstructed: %t \n", *e.is_obstructed)
+		//fmt.Printf("Obstructed: %t \n", *e.current_floor)
 		if *e.is_stopped {
 			fmt.Print("Stop")
 			e.Stop()
@@ -140,7 +141,7 @@ func (e Elevator) Main() {
 			e.OpenDoor()
 
 		}
-        time.Sleep(1*time.Second)
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -155,18 +156,18 @@ func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_flo
 			e.addOrders(floor, btn)
 
 		case cf := <-current_floor:
-			e.current_floor = &cf
+			*e.current_floor = cf
 
 		case io := <-is_obstructed:
-			e.is_obstructed = &io
+			*e.is_obstructed = io
 
 		case is := <-is_stopped:
-            order_mutex.Lock()
+			order_mutex.Lock()
 			*e.is_stopped = is
-            order_mutex.Unlock()
-            fmt.Printf("Stopping: %t\n", *e.is_stopped)
-        default:
-            // Do nothing
+			order_mutex.Unlock()
+			fmt.Printf("Stopping: %t\n", *e.is_stopped)
+		default:
+			// Do nothing
 		}
 	}
 }
