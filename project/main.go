@@ -168,25 +168,12 @@ func (e Elevator) Main() {
     fmt.Printf("%s", e.internal_state)
     for {      
         // Check for stop-button press
-<<<<<<< HEAD
-        stopped:= <- e.is_stopped
-        
-            if stopped {
-                fmt.Print("Stop")
-                e.Stop()
-                continue
-            }
-        
-        
-        
-=======
 
         if e.is_stopped {
             fmt.Print("Stop")
             e.Stop()
             continue
         }
->>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
 
         switch state := e.internal_state; state {
         case IDLE:
@@ -196,33 +183,19 @@ func (e Elevator) Main() {
         case MOVING:
             fmt.Printf("Moving")
             // Handle orders when at floor
-<<<<<<< HEAD
-            current_floor := <-e.current_floor
-            if current_floor != 1 {
-                e.at_floor = current_floor
-=======
             
             if e.current_floor != 1 {
                 e.at_floor = e.current_floor
->>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
                 e.visit_floor()
             }
 
         case DOOR_OPEN:
             fmt.Printf("open door")
             e.OpenDoor()
-<<<<<<< HEAD
-=======
-        case OBSTRUCTED:
-            fmt.Printf("Obstructed")
->>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
         }
     }
 }
 
-<<<<<<< HEAD
-
-=======
 func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_floor chan int, is_obstructed chan bool, is_stopped chan bool) {
     // Read from the channels and put data into variables
     for {
@@ -244,7 +217,6 @@ func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_flo
         }
     }
 }
->>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
 
 func (e Elevator) pickFloor() {
     // Sets new target to closest floor, prioritizing floors above
@@ -382,8 +354,7 @@ func (e Elevator)  MoveToOrder() {
 func (e Elevator) Stop() {
     // Handles stopping
 
-<<<<<<< HEAD
-    elevator_stop := <- e.is_stopped
+    elevator_stop := e.is_stopped;
 
     if e.internal_state == AT_FLOOR{
         elevio.SetDoorOpenLamp(true)
@@ -402,9 +373,7 @@ func (e Elevator) Stop() {
     }
 
 }
-=======
-    elevator_stop := e.is_stopped;
->>>>>>> 8cd2037bd35bc66c7ee5a6a2d2b1fcdb7613f289
+    
 
     // Handle the current state
     /*
