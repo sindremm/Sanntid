@@ -232,31 +232,39 @@ func (e Elevator) readOrder(button_order elevio.ButtonEvent) (floor int, button 
 	return order_floor, order_button
 }
 
-func (e Elevator) visit_floor() {
 
-	// Remove internal order when opening door at requested floor, and opens door
-	if e.internal_button_array[e.at_floor] {
-		e.internal_button_array[e.at_floor] = false
-		e.internal_state = DOOR_OPEN
-	}
+func (e *Elevator) visit_floor() {
 
-	// Reset internal button
-	elevio.SetButtonLamp(2, e.at_floor, false)
 
-	// Remove orders in same direction, and sets door to open
-	switch dir := e.moving_direction; dir {
-	case UP:
-		e.internal_state = DOOR_OPEN
-		e.up_button_array[e.at_floor] = false
-		// Reset upwards button
-		elevio.SetButtonLamp(0, e.at_floor, false)
-	case DOWN:
-		e.internal_state = DOOR_OPEN
-		e.down_button_array[e.at_floor] = false
-		// Reset downwards button
-		elevio.SetButtonLamp(1, e.at_floor, false)
-	}
+    // Remove internal order when opening door at requesten floor, and opens door
+    if e.internal_button_array[e.at_floor] {
+        e.internal_button_array[e.at_floor] = false;
+        e.internal_state = DOOR_OPEN;
+    }
 
+    // Remove orders in same direction, and sets door to open
+    switch e.moving_direction {
+    case UP:
+        if e.up_button_array[e.at_floor] {
+            e.up_button_array[e.at_floor] = false;
+            e.internal_state = DOOR_OPEN;
+
+            if !elevatorHasUpCallsBelow(&e) {
+                clearDownCallsAbove(&e)
+            }
+        }
+    case DOWN:
+        if e.down_button_array[e.at_floor] {
+            e.down_button_array[e.at_floor] = false;
+            e.internal_state = DOOR_OPEN;
+
+            if !elevatorHasDownCallsAbove(&e) {
+                clearUpCallsBelow(&e)
+            }
+        }
+    }
+    // Reset internal button
+    elevio.SetButtonLamp(2, e.at_floor, false)
 }
 
 func (e Elevator) OpenDoor() {
@@ -317,6 +325,41 @@ func (e Elevator) Stop() {
 		fmt.Print(e.internal_state)
 	}
 
+    
+// elevatorHasDownCallsAbove checks if there are any down calls above the current floor
+func elevatorHasDownCallsAbove(e *Elevator) bool {
+    for floor := e.at_floor + 1; floor < numFloors; floor++ {
+        if e.down_button_array[floor] {
+            return true
+        }
+    }
+    return false
+}
+
+// elevatorHasUpCallsBelow checks if there are any up calls below the current floor
+func elevatorHasUpCallsBelow(e *Elevator) bool {
+    for floor := 0; floor < e.at_floor; floor++ {
+        if e.up_button_array[floor] {
+            return true
+        }
+    }
+    return false
+}
+
+// clearDownCallsAbove clears down calls above the current floor
+func clearDownCallsAbove(e *Elevator) {
+    for floor := e.at_floor + 1; floor < numFloors; floor++ {
+        e.down_button_array[floor] = false
+        elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
+    }
+}
+
+// clearUpCallsBelow clears up calls below the current floor
+func clearUpCallsBelow(e *Elevator) {
+    for floor := 0; floor < e.at_floor; floor++ {
+        e.up_button_array[floor] = false
+        elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
+    }
 }
 
 func resetLights() {
