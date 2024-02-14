@@ -24,7 +24,6 @@ type HelloMsg struct {
 var numFloors int = 4
 
 type State int
-
 const (
 	IDLE State = iota
 	MOVING
@@ -33,16 +32,18 @@ const (
 	DOOR_OPEN
 )
 
-type Direction int
 
+type Direction int
 const (
 	UP Direction = iota
 	DOWN
 	STILL
 )
 
+
 // Temporary placement of Mutex
 var order_mutex sync.Mutex
+
 
 type Elevator struct {
 	// The buffer values received from the elevio interface
@@ -109,7 +110,7 @@ func (e Elevator) Main() {
 
 	// TODO: Write state machine
 
-	fmt.Printf("%s", e.internal_state)
+	// fmt.Printf("%s", e.internal_state)
 	for {
 		// Check for stop-button press
 		//fmt.Printf("Stopped: %t \n", *e.is_stopped)
@@ -123,14 +124,14 @@ func (e Elevator) Main() {
 
 		switch state := e.internal_state; state {
 		case IDLE:
-			//fmt.Printf("Idle")
+			fmt.Printf("Idle")
 			e.pickFloor()
 
 		case MOVING:
 			fmt.Printf("Moving")
 			// Handle orders when at floor
 
-			if *e.current_floor != 1 {
+			if *e.current_floor != -1 {
 				e.at_floor = *e.current_floor
 
 				e.visit_floor()
@@ -233,7 +234,7 @@ func (e Elevator) readOrder(button_order elevio.ButtonEvent) (floor int, button 
 }
 
 
-func (e *Elevator) visit_floor() {
+func (e Elevator) visit_floor() {
 
 
     // Remove internal order when opening door at requesten floor, and opens door
@@ -249,8 +250,8 @@ func (e *Elevator) visit_floor() {
             e.up_button_array[e.at_floor] = false;
             e.internal_state = DOOR_OPEN;
 
-            if !elevatorHasUpCallsBelow(&e) {
-                clearDownCallsAbove(&e)
+            if !elevatorHasUpCallsBelow(e) {
+                clearDownCallsAbove(e)
             }
         }
     case DOWN:
@@ -258,8 +259,8 @@ func (e *Elevator) visit_floor() {
             e.down_button_array[e.at_floor] = false;
             e.internal_state = DOOR_OPEN;
 
-            if !elevatorHasDownCallsAbove(&e) {
-                clearUpCallsBelow(&e)
+            if !elevatorHasDownCallsAbove(e) {
+                clearUpCallsBelow(e)
             }
         }
     }
@@ -307,7 +308,7 @@ func (e Elevator) MoveToOrder() {
 func (e Elevator) Stop() {
 	// Handles stopping
 
-	elevator_stop := e.is_stopped
+	elevator_stop := *e.is_stopped
 
 	if e.internal_state == AT_FLOOR {
 		elevio.SetDoorOpenLamp(true)
@@ -317,17 +318,17 @@ func (e Elevator) Stop() {
 	elevio.SetStopLamp(true)
 	elevio.SetMotorDirection(elevio.MD_Stop)
 
-	if !*elevator_stop {
+	if !elevator_stop {
 		time.Sleep(3 * time.Second)
 		e.internal_state = IDLE
 		elevio.SetStopLamp(false)
 		elevio.SetDoorOpenLamp(false)
-		fmt.Print(e.internal_state)
+		// fmt.Print(e.internal_state)
 	}
+}
 
-    
 // elevatorHasDownCallsAbove checks if there are any down calls above the current floor
-func elevatorHasDownCallsAbove(e *Elevator) bool {
+func elevatorHasDownCallsAbove(e Elevator) bool {
     for floor := e.at_floor + 1; floor < numFloors; floor++ {
         if e.down_button_array[floor] {
             return true
@@ -337,7 +338,7 @@ func elevatorHasDownCallsAbove(e *Elevator) bool {
 }
 
 // elevatorHasUpCallsBelow checks if there are any up calls below the current floor
-func elevatorHasUpCallsBelow(e *Elevator) bool {
+func elevatorHasUpCallsBelow(e Elevator) bool {
     for floor := 0; floor < e.at_floor; floor++ {
         if e.up_button_array[floor] {
             return true
@@ -347,7 +348,7 @@ func elevatorHasUpCallsBelow(e *Elevator) bool {
 }
 
 // clearDownCallsAbove clears down calls above the current floor
-func clearDownCallsAbove(e *Elevator) {
+func clearDownCallsAbove(e Elevator) {
     for floor := e.at_floor + 1; floor < numFloors; floor++ {
         e.down_button_array[floor] = false
         elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
@@ -355,7 +356,7 @@ func clearDownCallsAbove(e *Elevator) {
 }
 
 // clearUpCallsBelow clears up calls below the current floor
-func clearUpCallsBelow(e *Elevator) {
+func clearUpCallsBelow(e Elevator) {
     for floor := 0; floor < e.at_floor; floor++ {
         e.up_button_array[floor] = false
         elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
@@ -374,6 +375,8 @@ func resetLights() {
 func main() {
 
 	elevio.Init("localhost:15657", numFloors)
+
+    resetLights()
 
 	// Initialize the channels for receiving data from the elevio interface
 	drv_buttons := make(chan elevio.ButtonEvent)
