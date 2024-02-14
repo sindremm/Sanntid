@@ -9,6 +9,7 @@ import (
 	"fmt"
 	// "os"
 	"time"
+    "sync"
 )
 
 // We define some custom struct to send over the network.
@@ -40,12 +41,15 @@ const (
 	STILL
 )
 
+// Temporary placement of Mutex
+var order_mutex sync.Mutex
+
 type Elevator struct {
 	// The buffer values received from the elevio interface
-	button_order  elevio.ButtonEvent
-	current_floor int
-	is_obstructed bool
-	is_stopped    bool
+	button_order  *elevio.ButtonEvent
+	current_floor *int
+	is_obstructed *bool
+	is_stopped    *bool
 
 	// Arrays that show awhich buttons have been pressed
 	up_button_array       [4]bool
@@ -80,11 +84,17 @@ func makeElevator() Elevator {
 	down_array := [4]bool{}
 	internal_array := [4]bool{}
 
+
+    // Pointer values
+    floor_number := -1
+    is_obstructed := false
+    is_stopped := false
+
 	return Elevator{
-		elevio.ButtonEvent{},
-		-1,
-		false,
-		false,
+		&elevio.ButtonEvent{},
+		&floor_number,
+		&is_obstructed,
+		&is_stopped,
 		up_array,
 		down_array,
 		internal_array,
@@ -103,8 +113,8 @@ func (e Elevator) Main() {
 	fmt.Printf("%s", e.internal_state)
 	for {
 		// Check for stop-button press
-		fmt.Printf("Stopped: %t \n", e.is_stopped)
-		if e.is_stopped {
+		fmt.Printf("Stopped: %t \n", *e.is_stopped)
+		if *e.is_stopped {
 			fmt.Print("Stop")
 			e.Stop()
 			continue
@@ -119,8 +129,8 @@ func (e Elevator) Main() {
 			fmt.Printf("Moving")
 			// Handle orders when at floor
 
-			if e.current_floor != 1 {
-				e.at_floor = e.current_floor
+			if *e.current_floor != 1 {
+				e.at_floor = *e.current_floor
 
 				e.visit_floor()
 			}
@@ -145,14 +155,16 @@ func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_flo
 			e.addOrders(floor, btn)
 
 		case cf := <-current_floor:
-			e.current_floor = cf
+			e.current_floor = &cf
 
 		case io := <-is_obstructed:
-			e.is_obstructed = io
+			e.is_obstructed = &io
 
 		case is := <-is_stopped:
-			e.is_stopped = is
-            fmt.Printf("Stopping: %t\n", e.is_stopped)
+            order_mutex.Lock()
+			*e.is_stopped = is
+            order_mutex.Unlock()
+            fmt.Printf("Stopping: %t\n", *e.is_stopped)
         default:
             // Do nothing
 		}
@@ -249,7 +261,7 @@ func (e Elevator) visit_floor() {
 func (e Elevator) OpenDoor() {
 
 	//Runs only if door is not obstructed
-	obstruction_check := e.is_obstructed
+	obstruction_check := *e.is_obstructed
 
 	if !(obstruction_check) {
 		elevio.SetDoorOpenLamp(true)
@@ -296,7 +308,7 @@ func (e Elevator) Stop() {
 	elevio.SetStopLamp(true)
 	elevio.SetMotorDirection(elevio.MD_Stop)
 
-	if !elevator_stop {
+	if !*elevator_stop {
 		time.Sleep(3 * time.Second)
 		e.internal_state = IDLE
 		elevio.SetStopLamp(false)
