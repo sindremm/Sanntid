@@ -93,7 +93,6 @@ const (
     STOPPED
     AT_FLOOR
     DOOR_OPEN
-    OBSTRUCTED
 )
 
 type Direction int
@@ -172,15 +171,15 @@ func (e Elevator) Main() {
 
     for {      
         // Check for stop-button press
-        select {
-        case stopped:= <- e.is_stopped:
+        stopped:= <- e.is_stopped
+        
             if stopped {
                 fmt.Print("Stop")
                 e.Stop()
                 continue
             }
-        default:
-        }
+        
+        
         
 
         switch state := e.internal_state; state {
@@ -191,7 +190,7 @@ func (e Elevator) Main() {
             fmt.Printf("Moving")
             // Handle orders when at floor
             current_floor := <-e.current_floor
-            if current_floor != -1 {
+            if current_floor != 1 {
                 e.at_floor = current_floor
                 e.visit_floor()
             }
@@ -199,12 +198,11 @@ func (e Elevator) Main() {
         case DOOR_OPEN:
             fmt.Printf("open door")
             e.OpenDoor()
-        case OBSTRUCTED:
-
-            fmt.Printf("Obstructed")
         }
     }
 }
+
+
 
 func (e Elevator) pickFloor() {
     // Sets new target to closest floor, prioritizing floors above
@@ -272,7 +270,7 @@ func (e Elevator) readOrder() (floor int, button elevio.ButtonType){
 func (e Elevator) visit_floor() {
 
 
-    // Remove internal order when opening door at requesten floor, and opens door
+    // Remove internal order when opening door at requested floor, and opens door
     if e.internal_button_array[e.at_floor] {
         e.internal_button_array[e.at_floor] = false;
         e.internal_state = DOOR_OPEN;
@@ -302,16 +300,25 @@ func (e Elevator) visit_floor() {
 
 
 func (e Elevator) OpenDoor() {
-    elevio.SetDoorOpenLamp(true);
-    time.Sleep(3*time.Second);
-    elevio.SetDoorOpenLamp(false);
 
-    // Makes the elevator idle if it has arrived at the requested floor, and makes it keep moving otherwise
-    if e.target_floor == e.at_floor {
-        e.internal_state = IDLE
-    } else {
-        e.internal_state = MOVING
+    //Runs only if door is not obstructed
+    obstruction_check := <-e.is_obstructed
+
+    if !(obstruction_check){
+        elevio.SetDoorOpenLamp(true);
+        time.Sleep(3*time.Second);
+        elevio.SetDoorOpenLamp(false);
+
+        // Makes the elevator idle if it has arrived at the requested floor, and makes it keep moving otherwise
+        if e.target_floor == e.at_floor {
+            e.internal_state = IDLE
+        } else {
+            e.internal_state = MOVING
+        }
+
     }
+
+    
 }
 
 func (e Elevator)  MoveToOrder() {
@@ -333,9 +340,28 @@ func (e Elevator)  MoveToOrder() {
 func (e Elevator) Stop() {
     // Handles stopping
 
-    elevator_stop := <- e.is_stopped;
+    elevator_stop := <- e.is_stopped
+
+    if e.internal_state == AT_FLOOR{
+        elevio.SetDoorOpenLamp(true)
+    }
+
+    e.internal_state = STOPPED
+    elevio.SetStopLamp(true)
+    elevio.SetMotorDirection(elevio.MD_Stop)
+
+    if !elevator_stop{
+        time.Sleep(3*time.Second);
+        e.internal_state = IDLE
+        elevio.SetStopLamp(false)
+        elevio.SetDoorOpenLamp(false)
+        fmt.Print(e.internal_state)
+    }
+
+}
 
     // Handle the current state
+    /*
     switch e.internal_state {
     case MOVING:
         e.internal_state = STOPPED
@@ -352,11 +378,13 @@ func (e Elevator) Stop() {
         e.internal_state = STOPPED
         elevio.SetStopLamp(true)
     }
+    */
 
     // Reset all order lights
-    resetLights()
+    //resetLights()
 
-    // Restet timer every time button is pressed
+    // Reset timer every time button is pressed
+    /*
     for {
         if elevator_stop {
             e.interrupt_end = time.Now().Add(3*time.Second);
@@ -365,12 +393,15 @@ func (e Elevator) Stop() {
             break
         }
     }
+    */
     
     // Set state to IDLE
+    /*
     e.internal_state = IDLE
     elevio.SetStopLamp(false)
     elevio.SetDoorOpenLamp(false)
-}
+    */
+
 
 func resetLights() {
     // Reset all order lights
@@ -398,6 +429,8 @@ func main() {
     go elevio.PollFloorSensor(drv_floors)
     go elevio.PollObstructionSwitch(drv_obstr)
     go elevio.PollStopButton(drv_stop)
+
+    fmt.Print(drv_obstr)
     
 
     // Create elevator and start main loop
