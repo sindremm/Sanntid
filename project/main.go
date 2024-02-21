@@ -6,20 +6,11 @@ import (
 	// "Network-go/network/peers"
 	"Driver-go/elevio"
 	// "flag"
-	"fmt"
+	// "fmt"
 	// "os"
 	"sync"
 	"time"
 )
-
-// We define some custom struct to send over the network.
-// Note that all members we want to transmit must be public. Any private members
-//
-//	will be received as zero-values.
-type HelloMsg struct {
-	Message string
-	Iter    int
-}
 
 var numFloors int = 4
 
@@ -29,7 +20,6 @@ const (
 	IDLE State = iota
 	MOVING
 	STOPPED
-	AT_FLOOR
 	DOOR_OPEN
 )
 
@@ -115,7 +105,10 @@ func makeElevator() Elevator {
 
 func (e Elevator) Main() {
 
-	// TODO: Write state machine
+	if *e.at_floor == -1 {
+		elevio.SetMotorDirection(elevio.MD_Up)
+		*e.internal_state = MOVING
+	}
 
 	// fmt.Printf("%s", e.internal_state)
 	for {
@@ -124,23 +117,22 @@ func (e Elevator) Main() {
 		//fmt.Printf("Obstructed: %t \n", *e.is_obstructed)
 		//fmt.Printf("Obstructed: %t \n", *e.current_floor)
 		if *e.is_stopped {
-			fmt.Print("Stop\n")
-			e.Stop()
-			continue
+			// fmt.Print("Stop\n")
+			*e.internal_state = STOPPED
 		}
 
-		fmt.Printf("current floor: %d\n", *e.current_floor)
-		fmt.Printf("at floor: %d\n", *e.at_floor)
-		fmt.Printf("target floor: %d\n", *e.target_floor)
-		fmt.Printf("moving direction: %d\n", *e.moving_direction)
-		fmt.Printf("d buttons: %t\n", *e.down_button_array)
-		fmt.Printf("u buttons: %t\n", *e.up_button_array)
-		fmt.Printf("i buttons:%t\n", *e.internal_button_array)
-		fmt.Printf("---\n")
+		// fmt.Printf("current floor: %d\n", *e.current_floor)
+		// fmt.Printf("at floor: %d\n", *e.at_floor)
+		// fmt.Printf("target floor: %d\n", *e.target_floor)
+		// fmt.Printf("moving direction: %d\n", *e.moving_direction)
+		// fmt.Printf("d buttons: %t\n", *e.down_button_array)
+		// fmt.Printf("u buttons: %t\n", *e.up_button_array)
+		// fmt.Printf("i buttons:%t\n", *e.internal_button_array)
+		// fmt.Printf("---\n")
 
 		switch state := *e.internal_state; state {
 		case IDLE:
-			fmt.Printf("Idle\n")
+			// fmt.Printf("Idle\n")
 
 			// Update floor when channel gets new value
 			if *e.current_floor != *e.at_floor {
@@ -161,8 +153,7 @@ func (e Elevator) Main() {
 			
 
 		case MOVING:
-			fmt.Printf("Moving\n")
-			// Handle orders when at floor
+			// fmt.Printf("Moving\n")
 
 			// Run when arriving at new floor
 			if *e.current_floor != *e.at_floor {
@@ -172,9 +163,11 @@ func (e Elevator) Main() {
 			}
 
 		case DOOR_OPEN:
-			fmt.Printf("open door\n")
+			// fmt.Printf("open door\n")
 			e.OpenDoor()
 
+		case STOPPED:
+			e.Stop()
 		}
 		// time.Sleep(500 * time.Millisecond)
 	}
@@ -211,7 +204,7 @@ func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_flo
 func (e Elevator) clearOrdersAtFloor() {
 	// Check if any of the orders are for the current floor
 	if e.internal_button_array[*e.at_floor] || e.up_button_array[*e.at_floor] || e.down_button_array[*e.at_floor] {
-		fmt.Printf("ClearOrdersAtFloor\n")
+		// fmt.Printf("ClearOrdersAtFloor\n")
 		
 		// Open door
 		e.transitionToOpenDoor()
@@ -303,6 +296,12 @@ func (e Elevator) readOrder(button_order elevio.ButtonEvent) (floor int, button 
 }
 
 func (e Elevator) visit_floor() {
+
+	// Run when no floor at initialization
+	if *e.target_floor == -1 {
+		elevio.SetMotorDirection(elevio.MD_Stop)
+		*e.internal_state = IDLE
+	}
 
 	*e.at_floor = *e.current_floor
 
@@ -402,11 +401,7 @@ func (e Elevator) Stop() {
 
 	elevator_stop := *e.is_stopped
 
-	if *e.internal_state == AT_FLOOR {
-		elevio.SetDoorOpenLamp(true)
-	}
-
-	*e.internal_state = STOPPED
+	
 	elevio.SetStopLamp(true)
 	elevio.SetMotorDirection(elevio.MD_Stop)
 
