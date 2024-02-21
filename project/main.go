@@ -129,29 +129,45 @@ func (e Elevator) Main() {
 			continue
 		}
 
-		// fmt.Printf("current floor: %d\n", *e.current_floor)
-		// fmt.Printf("at floor: %d\n", *e.at_floor)
-		// fmt.Printf("target floor: %d\n", *e.target_floor)
-		// fmt.Printf("moving direction: %d\n", *e.moving_direction)
-		// fmt.Printf("d buttons: %t\n", *e.down_button_array)
-		// fmt.Printf("u buttons: %t\n", *e.up_button_array)
-		// fmt.Printf("i buttons:%t\n", *e.internal_button_array)
-		// fmt.Printf("---\n")
+		fmt.Printf("current floor: %d\n", *e.current_floor)
+		fmt.Printf("at floor: %d\n", *e.at_floor)
+		fmt.Printf("target floor: %d\n", *e.target_floor)
+		fmt.Printf("moving direction: %d\n", *e.moving_direction)
+		fmt.Printf("d buttons: %t\n", *e.down_button_array)
+		fmt.Printf("u buttons: %t\n", *e.up_button_array)
+		fmt.Printf("i buttons:%t\n", *e.internal_button_array)
+		fmt.Printf("---\n")
 
 		switch state := *e.internal_state; state {
 		case IDLE:
-			// fmt.Printf("Idle")
-			if *e.current_floor != -1 {
+			fmt.Printf("Idle\n")
+
+			// Update floor when channel gets new value
+			if *e.current_floor != *e.at_floor {
 				*e.at_floor = *e.current_floor
+				elevio.SetFloorIndicator(*e.at_floor)
 			}
-			e.pickFloor()
+
+			// Either move to existing target or choose new target
+			if *e.target_floor != -1 {
+				e.moveToTarget()
+			} else {
+				if *e.at_floor != -1 {
+					e.clearOrdersAtFloor()
+				}
+
+				e.pickTarget()
+			}
+			
 
 		case MOVING:
-			//fmt.Printf("Moving\n")
+			fmt.Printf("Moving\n")
 			// Handle orders when at floor
 
-			if *e.current_floor != -1 {
-
+			// Run when arriving at new floor
+			if *e.current_floor != *e.at_floor {
+				*e.at_floor = *e.current_floor
+				elevio.SetFloorIndicator(*e.at_floor)
 				e.visit_floor()
 			}
 
@@ -160,12 +176,13 @@ func (e Elevator) Main() {
 			e.OpenDoor()
 
 		}
-		// time.Sleep(1 * time.Second)
+		// time.Sleep(500 * time.Millisecond)
 	}
 }
 
+// Read from the channels and put data into variables
 func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_floor chan int, is_obstructed chan bool, is_stopped chan bool) {
-	// Read from the channels and put data into variables
+
 	for {
 		select {
 		case bo := <-button_order:
@@ -176,7 +193,7 @@ func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_flo
 
 		case cf := <-current_floor:
 			*e.current_floor = cf
-			fmt.Printf("\n From channel: %t \n", cf)
+			// fmt.Printf("\n From channel: %t \n", cf)
 
 		case io := <-is_obstructed:
 			*e.is_obstructed = io
@@ -185,14 +202,38 @@ func (e Elevator) readChannels(button_order chan elevio.ButtonEvent, current_flo
 			order_mutex.Lock()
 			*e.is_stopped = is
 			order_mutex.Unlock()
-			fmt.Printf("Stopping: %t\n", *e.is_stopped)
-		default:
-			// Do nothing
+			// fmt.Printf("Stopping: %t\n", *e.is_stopped)
 		}
 	}
 }
 
-func (e Elevator) pickFloor() {
+// Clears orders when they appear at the same floor as the elevator
+func (e Elevator) clearOrdersAtFloor() {
+	// Check if any of the orders are for the current floor
+	if e.internal_button_array[*e.at_floor] || e.up_button_array[*e.at_floor] || e.down_button_array[*e.at_floor] {
+		fmt.Printf("ClearOrdersAtFloor\n")
+		
+		// Open door
+		e.transitionToOpenDoor()
+
+		if *e.target_floor == *e.at_floor {
+			*e.target_floor = -1;
+		}
+
+		// Remove all orders on floor
+		e.internal_button_array[*e.at_floor] = false
+		e.up_button_array[*e.at_floor] = false
+		e.down_button_array[*e.at_floor] = false
+
+		// Reset all lights
+		elevio.SetButtonLamp(0, *e.at_floor, false)
+		elevio.SetButtonLamp(1, *e.at_floor, false)
+		elevio.SetButtonLamp(2, *e.at_floor, false)
+	}
+
+}
+
+func (e Elevator) pickTarget() {
 	// Sets new target to closest floor, prioritizing floors above
 	new_target := -1
 
@@ -200,10 +241,9 @@ func (e Elevator) pickFloor() {
 
 	// This code can be reworked to better adhere to the DRY-principle
 	// Check floors above
-	
-	i := 1
-	for {
-		if *e.at_floor + i < 4 {
+
+	for i := 1; i <= 3; i++{
+		if *e.at_floor+i < 4 {
 
 			// Check floors above
 			check_floor := *e.at_floor + i
@@ -212,14 +252,14 @@ func (e Elevator) pickFloor() {
 				continue
 			}
 
+			// Set target if an order exists on floor
 			if e.up_button_array[check_floor] || e.down_button_array[check_floor] || e.internal_button_array[check_floor] {
 				new_target = check_floor
-				*e.internal_state = MOVING
 				break
 			}
 
 		}
-		if *e.at_floor - i >= 0 {
+		if *e.at_floor-i >= 0 {
 			// Check floors below
 			check_floor := *e.at_floor - i
 
@@ -227,21 +267,16 @@ func (e Elevator) pickFloor() {
 				continue
 			}
 
+			// Set target if an order exists on floor
 			if e.up_button_array[check_floor] || e.down_button_array[check_floor] || e.internal_button_array[check_floor] {
 				new_target = check_floor
-				*e.internal_state = MOVING
 				break
 			}
-		}
-		i += 1
-
-		if i > 3 {
-			break
 		}
 	}
 
 	*e.target_floor = new_target
-	e.MoveToOrder()
+	
 }
 
 func (e Elevator) addOrders(floor int, button elevio.ButtonType) {
@@ -258,6 +293,8 @@ func (e Elevator) addOrders(floor int, button elevio.ButtonType) {
 
 }
 
+
+// Convert order to readable format
 func (e Elevator) readOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType) {
 	order_floor := button_order.Floor
 	order_button := button_order.Button
@@ -271,9 +308,13 @@ func (e Elevator) visit_floor() {
 
 	// Remove internal order when opening door at requested floor, and opens door
 	if e.internal_button_array[*e.at_floor] {
-		elevio.SetMotorDirection(elevio.MD_Stop)
+		// Remove order
 		e.internal_button_array[*e.at_floor] = false
-		*e.internal_state = DOOR_OPEN
+		elevio.SetButtonLamp(2, *e.at_floor, false)	
+
+		
+		// Open door
+		e.transitionToOpenDoor()
 	}
 
 	// Remove orders in same direction, and sets door to open
@@ -281,62 +322,70 @@ func (e Elevator) visit_floor() {
 	case UP:
 		if e.up_button_array[*e.at_floor] {
 			e.up_button_array[*e.at_floor] = false
-			*e.internal_state = DOOR_OPEN
-
+			elevio.SetButtonLamp(0, *e.at_floor, false)
 			
-			if !elevatorHasUpCallsBelow(e) {
-				clearDownCallsAbove(e)
-			}
+			
+			// Open door
+			e.transitionToOpenDoor()
 		}
 	case DOWN:
 		if e.down_button_array[*e.at_floor] {
 			e.down_button_array[*e.at_floor] = false
-			*e.internal_state = DOOR_OPEN
-
-			if !elevatorHasDownCallsAbove(e) {
-				clearUpCallsBelow(e)
-			}
+			elevio.SetButtonLamp(1, *e.at_floor, false)
+			
+			
+			// Open door
+			e.transitionToOpenDoor()
 		}
 	}
 	// Reset internal button
 	elevio.SetButtonLamp(2, *e.at_floor, false)
 
 	if *e.at_floor == *e.target_floor {
-		*e.internal_state = DOOR_OPEN
+		e.transitionToOpenDoor()
+
 		e.internal_button_array[*e.at_floor] = false
 		e.up_button_array[*e.at_floor] = false
 		e.down_button_array[*e.at_floor] = false
 
+
+		// TODO: Figure out logic when several buttons are pressed at target
+		elevio.SetButtonLamp(0, *e.at_floor, false)
+		elevio.SetButtonLamp(1, *e.at_floor, false)
+		elevio.SetButtonLamp(2, *e.at_floor, false)	
+
 	}
 }
 
-func (e Elevator) OpenDoor() {
+func (e Elevator) transitionToOpenDoor() {
 	elevio.SetMotorDirection(elevio.MD_Stop)
-	//Runs only if door is not obstructed
+	elevio.SetDoorOpenLamp(true)
+	*e.internal_state = DOOR_OPEN
+}
+
+func (e Elevator) OpenDoor() {
+
+	// Keep door open until not obstructed
 	obstruction_check := *e.is_obstructed
 
 	if !(obstruction_check) {
 
-		elevio.SetDoorOpenLamp(true)
+		// Close door
 		time.Sleep(3 * time.Second)
 		elevio.SetDoorOpenLamp(false)
 
-		// Makes the elevator idle if it has arrived at the requested floor, and makes it keep moving otherwise
-		if *e.target_floor == *e.at_floor {
-			*e.internal_state = IDLE
-		} else {
-			*e.internal_state = MOVING
-		}
+		*e.internal_state = IDLE
 
+		// Remove target if current floor is target floor
+		if *e.at_floor == *e.target_floor {
+			*e.target_floor = -1
+		}
 	}
 
 }
 
-func (e Elevator) MoveToOrder() {
-	if *e.target_floor == -1 {
-		return
-	}
-
+func (e Elevator) moveToTarget() {
+	// Set state to MOVING and set motor direction
 	*e.internal_state = MOVING
 
 	if *e.target_floor > *e.at_floor {
@@ -370,43 +419,17 @@ func (e Elevator) Stop() {
 	}
 }
 
-// elevatorHasDownCallsAbove checks if there are any down calls above the current floor
-func elevatorHasDownCallsAbove(e Elevator) bool {
-	for floor := *e.at_floor + 1; floor < numFloors; floor++ {
-		if e.down_button_array[floor] {
-			return true
-		}
-	}
-	return false
-}
+// Reset all elevator elements
+func resetElevator() {
+	// Set motor direction to stop
+	elevio.SetMotorDirection(elevio.MD_Stop)
 
-// elevatorHasUpCallsBelow checks if there are any up calls below the current floor
-func elevatorHasUpCallsBelow(e Elevator) bool {
-	for floor := 0; floor < *e.at_floor; floor++ {
-		if e.up_button_array[floor] {
-			return true
-		}
-	}
-	return false
-}
+	// Turn off stop lamb
+	elevio.SetStopLamp(false)
+	
+	// Turn of open door lamp
+	elevio.SetDoorOpenLamp(false)
 
-// clearDownCallsAbove clears down calls above the current floor
-func clearDownCallsAbove(e Elevator) {
-	for floor := *e.at_floor + 1; floor < numFloors; floor++ {
-		e.down_button_array[floor] = false
-		elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
-	}
-}
-
-// clearUpCallsBelow clears up calls below the current floor
-func clearUpCallsBelow(e Elevator) {
-	for floor := 0; floor < *e.at_floor; floor++ {
-		e.up_button_array[floor] = false
-		elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
-	}
-}
-
-func resetLights() {
 	// Reset all order lights
 	for f := 0; f < numFloors; f++ {
 		for b := elevio.ButtonType(0); b < 3; b++ {
@@ -419,7 +442,7 @@ func main() {
 
 	elevio.Init("localhost:15657", numFloors)
 
-	resetLights()
+	resetElevator()
 
 	// Initialize the channels for receiving data from the elevio interface
 	drv_buttons := make(chan elevio.ButtonEvent)
@@ -439,7 +462,9 @@ func main() {
 	go main_elevator.readChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
 	go main_elevator.Main()
 
-	for {
+	// Prevent the program from terminating
+	for { 
+		time.Sleep(time.Minute)
 	}
 
 }
