@@ -21,7 +21,7 @@ type Order struct {
 }
 
 type MasterSlave struct {
-	current_order [4]*Order
+	current_order *Order
 	is_master	 bool
 	backup_orders []*Order
 	handle_order chan *Order
