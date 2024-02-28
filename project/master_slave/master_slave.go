@@ -8,29 +8,49 @@ import  (
 	"time"
 )
 
+// Layout of the system data
+type SystemData struct{
+	ISMASTER int
+	
+	// ALL RECEIVED ORDERS
+	UP_BUTTON_ARRAY 	  *[4]bool
+	DOWN_BUTTON_ARRAY     *[4]bool
+	INTERNAL_BUTTON_ARRAY *[4]bool
+
+	// ALL CURRENTLY WORKING ELEVATORS
+	WORKING_ELEVATORS    *[4]bool
+
+	// POSITION AND TARGET OF EACH ELEVATOR
+	ELEVATOR_STATES	   *[4]ElevatorState
+
+	// COUNTER FOR MESSAGE SYNCHRONIZATION 
+	COUNTER int
+
+}
+
+//
+
+type ElevatorState struct{
+	CURRENT_FLOOR int
+	TARGET_FLOOR int
+}
+
 const (
 	SERVER_IP_ADDRESS = "127.0.0.1"
 	PORT = "20005"
 	FILENAME = "home/student/Documents/AjananMiaSindre/Sanntid/project/driver-go/master_slave/master_slave.go"
 )
 
-type Order struct {
-    ID   int
-    Item string
-    // Add more fields as needed
-}
 
 type MasterSlave struct {
-	current_order *Order
-	is_master	 bool
-	backup_orders []*Order
-	handle_order chan *Order
-	switch_to_backup chan bool
-}
+	current_data *SystemData
+	elevator_number int
 
-func NewMasterSlave() *MasterSlave {
-	return &MasterSlave{
-		is_master: true,
+}
+//Todo: endre på funksjonene under slik at de matcher systemdata
+func NewMasterSlave() *SystemData {
+	return &SystemData{
+		ISMASTER: true,
 		handle_order: make(chan *Order),
 		switch_to_backup: make(chan bool),
 	}
