@@ -1,7 +1,0 @@
-go 1.16
-
-use (
-	./project/master_slave-go
-	./project/single-elevator
-	./project/driver-go
-)

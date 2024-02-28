@@ -6,7 +6,7 @@ import (
 	// "Network-go/network/peers"
 	"Driver-go/elevio"
 	"time"
-	"Single-elevator/singleelev"
+	singleelev "elevator/single-elevator"
 )
 
 
@@ -16,7 +16,7 @@ func main() {
 
 	elevio.Init("localhost:15657", numFloors)
 
-	singleelev.resetElevator()
+	singleelev.ResetElevator()
 
 	// Initialize the channels for receiving data from the elevio interface
 	drv_buttons := make(chan elevio.ButtonEvent)
@@ -30,10 +30,10 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 
 	// Create elevator and start main loop
-	main_elevator := singleelev.makeElevator()
+	main_elevator := singleelev.MakeElevator()
 
 	// Start threads
-	go main_elevator.readChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
+	go main_elevator.ReadChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
 	go main_elevator.Main()
 
 	// Prevent the program from terminating
