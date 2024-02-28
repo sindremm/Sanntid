@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
-	"strings"
+	//"strings"
 )
 
 // Added comment
@@ -24,26 +24,43 @@ func main() {
 }
 
 func listen() {
-	l, err := net.Listen("tcp", ":" + slave_port)
-	if err != nil{
+
+	l, err := net.Listen("tcp", ":"+slave_port)
+	if err != nil {
 		fmt.Printf("Failed to listen message %v\n", err)
 	}
 	defer l.Close()
+	//loop to contiouusly receive messages
+	for {
+		conn, err := l.Accept()
+		//fmt.Printf("\n accept: %t", conn)
+		if err != nil {
+			fmt.Printf("Failed to accept message %v\n", err)
+		}
 
+		buffer := make([]byte, 2048)
 
-	conn, err := l.Accept()
-	fmt.Printf("\n accept: %t", conn)
-	if err != nil{
-		fmt.Printf("Failed to accept message %v\n", err)
+		//buffer[:n] is message from client
+		n, err := conn.Read(buffer)
+		if err != nil {
+			fmt.Printf("Failed to read message %v\n", err)
+		}
+		received_address := string(buffer[:n])
+		fmt.Printf("\n%v", received_address)
+		//fmt.Printf("\n Remote address: %v", conn.RemoteAddr().String())
+		connectToMaster(received_address)
 	}
-
-	buffer := make([]byte, 2048)
-
-	//Reading from server
-	n, err := conn.Read(buffer)
+}
+func connectToMaster(received_address string) {
+	conn, err := net.Dial("tcp", received_address)
 	if err != nil {
-		fmt.Printf("Failed to read message %v\n", err)
+		fmt.Printf("Error with sending %v \n", err)
 	}
-	fmt.Printf("Message: %v", string(buffer[:n]))
-	return conn
+	defer conn.Close()
+	msg_back := "Hello back\000"
+	_, err = conn.Write([]byte(msg_back))
+	if err != nil {
+		fmt.Printf("Failed \n")
+	}
+
 }
