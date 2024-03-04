@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	//"strings"
+	"elevator/network/localip"
 )
 
 // Added comment
@@ -20,6 +21,11 @@ var slave_port = "33546"
 var slave_address = slave_IP + ":" + slave_port
 
 func main() {
+	localIP, err := localip.LocalIP()
+	if err != nil {
+		fmt.Printf("\nIP: %v", localIP)	
+	}
+	fmt.Printf("\nIP: %v", localIP)
 	listen()
 }
 
