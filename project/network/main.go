@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 )
+//Comment
 
 // We define some custom struct to send over the network.
 // Note that all members we want to transmit must be public. Any private members
@@ -21,10 +22,10 @@ type HelloMsg struct {
 func main() {
 	// Our id can be anything. Here we pass it on the command line, using
 	//  `go run main.go -id=our_id`
-	var id = "192.168.10.141"
+	var id string
 	flag.StringVar(&id, "id", "", "id of this peer")
 	flag.Parse()
-
+	
 
 	// ... or alternatively, we can use the local IP address.
 	// (But since we can run multiple programs on the same PC, we also append the
