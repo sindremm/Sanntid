@@ -21,6 +21,9 @@ type SystemData struct{
 	// ALL CURRENTLY WORKING ELEVATORS
 	WORKING_ELEVATORS    *[4]bool
 
+	ELEVATOR_FLOORS *[4]int
+	ELEVATOR_DIRECTION *[4]int
+
 	// POSITION AND TARGET OF EACH ELEVATOR
 	ELEVATOR_STATES	   *[4]ElevatorState
 
@@ -57,6 +60,8 @@ func NewMasterSlave() *SystemData {
         DOWN_BUTTON_ARRAY: &([4]bool{}),
         INTERNAL_BUTTON_ARRAY: &([4]bool{}),
         WORKING_ELEVATORS: &([4]bool{}),
+		ELEVATOR_FLOORS: &([4]int{}),
+		ELEVATOR_DIRECTION: &([4]int{}),
         ELEVATOR_STATES: &([4]ElevatorState{}),
         COUNTER: 0,
     }
