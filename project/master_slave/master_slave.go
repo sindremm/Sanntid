@@ -17,13 +17,13 @@ type SystemData struct{
 	// ALL RECEIVED ORDERS
 	UP_BUTTON_ARRAY 	  *[4]bool
 	DOWN_BUTTON_ARRAY     *[4]bool
-	INTERNAL_BUTTON_ARRAY *[4]bool
+	INTERNAL_BUTTON_ARRAY *[3][4]bool
 
 	// ALL CURRENTLY WORKING ELEVATORS
 	WORKING_ELEVATORS    *[4]bool
 
 	// POSITION AND TARGET OF EACH ELEVATOR
-	ELEVATOR_STATES	   *[4]ElevatorState
+	ELEVATOR_STATES	   *[3]ElevatorState
 
 	// COUNTER FOR MESSAGE SYNCHRONIZATION 
 	COUNTER int
@@ -32,9 +32,11 @@ type SystemData struct{
 
 
 type ElevatorState struct{
+	ACTIVE bool
+	INTERNAL_STATE int // State machine state of elevator
 	CURRENT_FLOOR int
 	TARGET_FLOOR int
-	Direction int // 1 for up, -1 for down, 0 for internal
+	Direction int // 0 for stop, 1 for up, 2 for down
 }
 
 const (
@@ -54,12 +56,12 @@ type MasterSlave struct {
 
 func NewMasterSlave() *SystemData {
     return &SystemData{
-        ISMASTER: 0,
+        SENDER: 0,
         UP_BUTTON_ARRAY: &([4]bool{}),
         DOWN_BUTTON_ARRAY: &([4]bool{}),
-        INTERNAL_BUTTON_ARRAY: &([4]bool{}),
+        INTERNAL_BUTTON_ARRAY: &([3][4]bool{}),
         WORKING_ELEVATORS: &([4]bool{}),
-        ELEVATOR_STATES: &([4]ElevatorState{}),
+        ELEVATOR_STATES: &([3]ElevatorState{}),
         COUNTER: 0,
     }
 }
@@ -84,7 +86,8 @@ func (ms *MasterSlave) HandleOrderFromMaster(order *ElevatorState) error {
 		ms.current_data.DOWN_BUTTON_ARRAY[order.TARGET_FLOOR] = true
 	// If the direction is 0 (internal), set the corresponding floor in the internal button array to true
 	} else {
-		ms.current_data.INTERNAL_BUTTON_ARRAY[order.TARGET_FLOOR] = true
+		// TODO: Set internal orders for given elevator
+		// ms.current_data.INTERNAL_BUTTON_ARRAY[order.TARGET_FLOOR] = true
 	}
 	// Print a message indicating that the order has been processed
 	fmt.Printf("Order for floor %d with direction %d has been processed.\n", order.TARGET_FLOOR, order.Direction)
@@ -92,7 +95,7 @@ func (ms *MasterSlave) HandleOrderFromMaster(order *ElevatorState) error {
 }
 
 func (ms *SystemData) SwitchToBackup() {
-	ms.ISMASTER = 0
+	ms.SENDER = 0
 	fmt.Println("Master is dead, switching to backup")
 }
 

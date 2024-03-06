@@ -8,195 +8,88 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strings"
-	"strconv"
+	// "io/ioutil"
 )
 
-// const N_ELEVATORS int = 4
-// const N_FLOORS int = 4
+func assembleArgument(systemData master_slave.SystemData) MessageStruct {
 
-// type ElevatorScheduler struct {
-// 	// The buffer values received from the elevio interface
+	// Create empty struct to store data
+	new_argument := MessageStruct{}
 
-// 	current_floor *[N_ELEVATORS]int
-// 	is_obstructed *[N_ELEVATORS]bool
-// 	is_stopped    *[N_ELEVATORS]bool
-
-// 	up_button_array       *[N_FLOORS]bool
-// 	down_button_array     *[N_FLOORS]bool
-// 	internal_button_array *[N_FLOORS]bool
-// }
-
-// func MakeElevatorScheduler() ElevatorScheduler {
-// 	// Set state to idle
-// 	var start_state State = IDLE
-
-// 	// Exception value
-// 	starting_floor := -1
-
-// 	// Target floor
-// 	target_floor := -1
-
-// 	// Starting direction
-// 	starting_direction := STILL
-
-// 	// Initialize empty button arrays
-// 	up_array := [N_FLOORS]bool{}
-// 	down_array := [N_FLOORS]bool{}
-// 	internal_array := [N_FLOORS]bool{}
-
-// 	// Pointer values
-// 	floor_number := -1
-// 	is_obstructed := false
-// 	is_stopped := false
-
-// 	start_time := time.Now()
-
-// 	return ElevatorScheduler{
-// 		&elevio.ButtonEvent{},
-// 		&floor_number,
-// 		&is_obstructed,
-// 		&is_stopped,
-// 		&up_array,
-// 		&down_array,
-// 		&internal_array,
-// 		&start_state,
-// 		&starting_floor,
-// 		&target_floor,
-// 		&starting_direction,
-// 		&start_time}
-
-// }
-
-// // Temporary placement of Mutex
-// var order_mutex sync.Mutex
-
-// // Read from the channels and put data into variables
-// func (e ElevatorScheduler) ReadChannels(button_order chan elevio.ButtonEvent, floor chan int, obstruction chan bool, stopped chan bool) {
-
-// 	for {
-// 		select {
-// 		case bo := <-button_order:
-// 			// Gett floor and button data
-// 			floor, btn := e.ReadOrder(bo)
-
-// 			// Ready order for handling
-// 			e.AddOrders(floor, btn)
-
-// 		case cf := <-floor:
-// 			order_mutex.Lock()
-// 			*e.current_floor = cf
-// 			order_mutex.Unlock()
-// 			// fmt.Printf("\n From channel: %t \n", cf)
-
-// 		case io := <-obstruction:
-// 			order_mutex.Lock()
-// 			*e.is_obstructed = io
-// 			order_mutex.Unlock()
-
-// 		case is := <-stopped:
-// 			order_mutex.Lock()
-// 			*e.is_stopped = is
-// 			order_mutex.Unlock()
-// 			// fmt.Printf("Stopping: %t\n", *e.is_stopped)
-// 		}
-// 	}
-// }
-
-// // Adds orders to the button arrays
-// func (e ElevatorScheduler) AddOrders(floor int, button elevio.ButtonType) {
-// 	// Set elevator lights
-// 	elevio.SetButtonLamp(button, floor, true)
-
-// 	order_mutex.Lock()
-// 	switch button {
-// 	case 0:
-// 		e.up_button_array[floor] = true
-// 	case 1:
-// 		e.down_button_array[floor] = true
-// 	case 2:
-// 		e.internal_button_array[floor] = true
-// 	}
-// 	order_mutex.Unlock()
-// }
-
-// // Convert order to readable format
-// func (e ElevatorScheduler) ReadOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType) {
-// 	order_floor := button_order.Floor
-// 	order_button := button_order.Button
-
-// 	return order_floor, order_button
-// }
-
-func assembleArgument(systemData master_slave.SystemData) string {
-
-	arguments := "'{"
-
-	// Add hall requests:
+	// Add button calls to 2x4 array HallRequests
 	up := systemData.UP_BUTTON_ARRAY
 	down := systemData.DOWN_BUTTON_ARRAY
-	requests := make([]string, len(up), len(down))
+	requests := [4][2]bool{}
 
 	for i := 0; i < len(up); i++ {
-		element := []string{fmt.Sprintf("%t", up[i]), fmt.Sprintf("%t", down[i])}
-		requests[i] = "[" + strings.Join(element, ",") + "]"
+		requests[i][0] = up[i]
+		requests[i][1] = down[i]
 	}
-	request_string := "[" + strings.Join(requests, ",") + "]"
-	arguments += "\n\t\"hallRequests\" :\n\t\t" + request_string + ",\n"
+
+	new_argument.HallRequests = requests
 
 	// Assemble states
-	arguments += "\t\"states\" : { \n"
-	elev_number := [3]string{"one", "two", "three"}
-
+	direction_string := [3]string{"stop", "up", "down"}
+	new_states := states{}
 	for i := 0; i < len(systemData.ELEVATOR_STATES); i++ {
-		state := systemData.ELEVATOR_STATES[i]
-		if !state.ACTIVE {
-			continue
-		}
-		arguments += "\t\t" + "\"" + elev_number[i] + "\"" + " : {\n\t\t\t"
 
-		arguments += state_to_behaviour(state)
-		new_array := []string{}
-		for _, el := range systemData.INTERNAL_BUTTON_ARRAY[i] {
-			new_array = append(new_array, strconv.FormatBool(el))
+		new_state := singleState{}
+
+		state := systemData.ELEVATOR_STATES[i]
+
+		new_state.Behaviour = state_to_behaviour(state)
+		new_state.Floor = state.CURRENT_FLOOR
+		new_state.Direction = direction_string[state.Direction]
+		new_state.CabRequests = systemData.INTERNAL_BUTTON_ARRAY[i]
+
+		// Set the values for the corresponding elevator
+		if i == 0 {
+			new_states.One = new_state
+		} else if i == 1 {
+			new_states.Two = new_state
 		}
-		arguments += "\"cabRequests\":" + "[" + strings.Join(new_array, ",") + "]" + "\n\t\t}"
-		if i + 2 < len(systemData.ELEVATOR_STATES) {
-			arguments += ","
-		}
-		arguments += "\n"
+		// else if i == 2 {
+		// 	new_states.three = new_state
+		// }
 	}
-	arguments += "\n\t}\n}\n'"
-	return arguments
+
+	// Set the new states
+	new_argument.States = new_states
+	
+	return new_argument
 }
 
+// Translate the elevators state to the corresponding string value
 func state_to_behaviour(state master_slave.ElevatorState) string {
-	output := "\"behaviour\":"
-
-	// TODO add the rest
-
-	// Add behaviour to output
+	// TODO: Find correct corresponding states
 	if state.INTERNAL_STATE == 0 {
-		output += "\"idle\",\n\t\t\t"
-	} else if state.INTERNAL_STATE == 1 {
-		output += "\"moving\",\n\t\t\t"
+		return "idle"
+	}
+	if state.INTERNAL_STATE == 1 {
+		return "moving"
+	}
+	if state.INTERNAL_STATE == 2 {
+		return "doorOpen"
 	}
 
-	// Add floor to output
-	output += "\"floor\":" + fmt.Sprintf("%v", state.CURRENT_FLOOR) + ",\n\t\t\t"
+	fmt.Errorf("Unknown internal state reached")
+	return ""
+}
 
-	// Add direction to output
-	output += "\"direction\":"
-	if state.Direction == 1 {
-		output += "\"up\",\n"
-	} else if state.Direction == -1 {
-		output += "\"down\",\n"
-	} else if state.Direction == 0 {
-		output += "\"stop\",\n"
-	}
-	output += "\t\t\t"
+type singleState struct {
+	Behaviour   string  `json:"behaviour"`
+	Floor       int     `json:"floor"`
+	Direction   string  `json:"direction"`
+	CabRequests [4]bool `json:"cabRequests"`
+}
 
-	return output
+type states struct {
+	One singleState `json:"one"`
+	Two singleState `json:"two"`
+}
+type MessageStruct struct {
+	HallRequests [4][2]bool `json:"hallRequests"`
+	States       states     `json:"states"`
 }
 
 func runCommandLine(systemData master_slave.SystemData) {
@@ -219,22 +112,31 @@ func runCommandLine(systemData master_slave.SystemData) {
 		}
 	}
 }`
-	// fmt.Printf(arg)
-	arg = assembleArgument(systemData)
-	// fmt.Printf(arg)
 
-	cmd := exec.Command(command, "-i", arg)
+	// Create json string
+	new_struct := assembleArgument(systemData)
+	new_json, err := json.MarshalIndent(new_struct, "", "\t")
+
+	if err != nil {
+		fmt.Printf("%s", err)
+		return
+	}
+
+	
+	// Execute command
+	cmd := exec.Command(command, "-i", string(new_json))
 	stdout, err := cmd.Output()
-	// fmt.Printf(arg + "\n")
 
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	var jsonMap map[string]interface{}
+
+	// Decode to struct
+	var jsonMap MessageStruct
 	json.Unmarshal([]byte(stdout), &jsonMap)
 
-	fmt.Println(jsonMap["one"])
+	fmt.Println(jsonMap.HallRequests)
 }
 
 func main() {
@@ -253,16 +155,16 @@ func main() {
 	// go elevio.PollStopButton(drv_stop)
 	states := [3]master_slave.ElevatorState{
 		{
-			ACTIVE:        true,
-			CURRENT_FLOOR: 2,
-			TARGET_FLOOR:  2,
-			Direction:     1,
+			ACTIVE:         true,
+			CURRENT_FLOOR:  2,
+			TARGET_FLOOR:   2,
+			Direction:      1,
 			INTERNAL_STATE: 1},
 		{
-			ACTIVE:        true,
-			CURRENT_FLOOR: 0,
-			TARGET_FLOOR:  2,
-			Direction:     0,
+			ACTIVE:         true,
+			CURRENT_FLOOR:  0,
+			TARGET_FLOOR:   2,
+			Direction:      0,
 			INTERNAL_STATE: 0},
 	}
 
