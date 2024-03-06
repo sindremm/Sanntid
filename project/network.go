@@ -6,12 +6,17 @@ import (
 	//"strings"
 	"time"
 	"elevator/network/localip"
-	"elevator/network/peers"
+	//"elevator/network/peers"
 )
 
 type OrderMessage struct {
 	OrderFloor int
 	ButtonType int
+}
+
+type HelloMsg struct {
+	Message string
+	Iter    int
 }
 
 var TCP_timeout = 500 * time.Millisecond
@@ -35,28 +40,49 @@ func main() {
 		fmt.Printf("Local IP error: %v \n", err)
 	}
 	fmt.Printf("\nIP:", localIP)
-
-	
-	// l, err := net.Listen("tcp", ":"+"33567")
-	// if err != nil{
-	// 	fmt.Printf("Failed to listen message %v\n", err)
-	// }
 	
 
-	//connection := accept()
-	//go handleConnection(connection)
-	//doEvery(2000*time.Millisecond, connectToSlave)
 
-	peerBool := make(chan bool)
-	peers.Transmitter(33546, "Hello", peerBool)
+	conn, err := net.DialTimeout("tcp", slave_address, TCP_timeout)
+	if err != nil {
+		fmt.Printf("Some error 1 %v\n", err)
+		 return
+	}
+	//defer conn.Close()
+	//Message we send to other client (REMEMBER \000)
+	msg := localIP + "\000"
+	_, err = conn.Write([]byte(msg))
+	if err != nil {
+		fmt.Printf("Failed to send message %v\n", err)
+		return
+	}
 
+	for{
+	buffer := make([]byte, 2048)
+	//Reading from slave
+	n, err := conn.Read(buffer)
+	if err != nil {
+		fmt.Printf("Failed to read message %v\n", err)
+	}
+	fmt.Printf("Message: %v", string(buffer[:n]))
+	}
+	doEvery(1*time.Second, writeMessage(conn))
 	//connectToSlave(localIP)
 	//accept(l)
 	
 }
 
 
+func writeMessage(conn net.Conn){
+	msg := localIP + "\000"
+	_, err = conn.Write([]byte(msg))
+	if err != nil {
+		fmt.Printf("Failed to send message %v\n", err)
+		return
+	}
+}
 
+//Not currently used, delete later
 func connectToSlave(localIP string) {
 	conn, err := net.DialTimeout("tcp", slave_address, TCP_timeout)
 		if err != nil {
@@ -74,24 +100,33 @@ func connectToSlave(localIP string) {
 
 }
 
+//Not currently use, delete later
 func accept(l net.Listener){
+
+	l, err := net.Listen("tcp", ":"+"33567")
+	fmt.Printf("\n %s", l)
+	 if err != nil{
+	 	fmt.Printf("Failed to listen message %v\n", err)
+	 }
+
 	fmt.Printf("\n Got to accept \n")
-
+	defer l.Close()
 	for{
-	conn, err := l.Accept()
-	fmt.Printf("\n accept: %t", conn)
-	if err != nil{
-		fmt.Printf("Failed to accept message %v\n", err)
-	}
-	fmt.Printf("\n Got past accept \n")
-	buffer := make([]byte, 2048)
+		conn, err := l.Accept()
+		fmt.Printf("\n accept: %t", conn)
+		if err != nil{
+			fmt.Printf("Failed to accept message %v\n", err)
+		}
+		defer conn.Close()
+		fmt.Printf("\n Got past accept \n")
+		buffer := make([]byte, 2048)
 
-	//Reading from slave
-	n, err := conn.Read(buffer)
-	if err != nil {
-		fmt.Printf("Failed to read message %v\n", err)
-	}
-	fmt.Printf("Message: %v", string(buffer[:n]))
+		//Reading from slave
+		n, err := conn.Read(buffer)
+		if err != nil {
+			fmt.Printf("Failed to read message %v\n", err)
+		}
+		fmt.Printf("Message: %v", string(buffer[:n]))
 
 	}
 }
