@@ -13,8 +13,6 @@ var our_port = "10005"
 
 var localIP string
 
-var master_address = "172.23.70.94"
-
 var slave_IP = "10.100.23.15"
 
 var slave_port = "33546"
@@ -22,6 +20,10 @@ var slave_port = "33546"
 var slave_address = slave_IP + ":" + slave_port
 
 func main() {
+	communicateClient()
+}
+
+func communicateClient() {
 	localIP, err := localip.LocalIP()
 	if err != nil {
 		fmt.Printf("\nIP: %v", localIP)
