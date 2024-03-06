@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"strconv"
 
 	//"strings"
 	"elevator/network/bcast"
@@ -12,26 +13,19 @@ import (
 	"time"
 )
 
-type OrderMessage struct {
-	OrderFloor int
-	ButtonType int
-}
-
 type AliveMsg struct {
 	Message string
 	address string
 	Iter    int
 }
 
+type testTCPMsg struct {
+	SomeMessage string
+	TempOrder   int
+}
+
+// Changes timeout time for Dial. 500 milliseconds = 0.5 second
 var TCP_timeout = 500 * time.Millisecond
-
-var our_port = "33546"
-
-var broadcast_port = 33344
-
-var peers_port = 33224
-
-var localIP string
 
 var slave_IP = "10.100.23.15"
 
@@ -42,23 +36,33 @@ var slave_address = slave_IP + ":" + slave_port
 // Comment out sections: ctrl, k c
 func main() {
 
-	//Prints local IP
+	//Gets local IP
 	localIP, err := localip.LocalIP()
 	if err != nil {
 		fmt.Printf("Local IP error: %v \n", err)
 	}
 	fmt.Printf("\nIP:", localIP)
 
+	//The id that gets broadcasted to peers
 	var id string
 	flag.StringVar(&id, "id", "", "id of this peer")
 	flag.Parse()
 
-	updateLife(id)
-	checkForLife(id)
-	//communicate(localIP)
+	//Ports for checking for life
+	broadcast_port := 33344
+	peers_port := 33224
+
+	fmt.Printf("\n %v %v \n", peers_port, broadcast_port)
+
+	tempMessage := testTCPMsg{"Hello", 544}
+
+	//updateLife(id, peers_port, broadcast_port)
+	//checkForLife(id, peers_port, broadcast_port)
+	communicate(localIP, tempMessage)
 }
 
-func checkForLife(id string) {
+// Gets information on life status on the peers of the network
+func checkForLife(id string, peers_port int, broadcast_port int) {
 
 	peers_update_channel := make(chan peers.PeerUpdate)
 
@@ -68,6 +72,7 @@ func checkForLife(id string) {
 
 	go bcast.Receiver(broadcast_port, aliveCheck)
 
+	//Prints peer update
 	for {
 		select {
 		case p := <-peers_update_channel:
@@ -81,13 +86,16 @@ func checkForLife(id string) {
 	}
 }
 
-func updateLife(id string) {
+// Sends message on life status
+func updateLife(id string, peers_port int, broadcast_port int) {
 	peer_bool := make(chan bool)
 	go peers.Transmitter(peers_port, id, peer_bool)
 
 	aliveUpdateMsg := make(chan AliveMsg)
 
 	go bcast.Transmitter(broadcast_port, aliveUpdateMsg)
+
+	//Uncomment if we want updates every second
 	/*
 		go func() {
 			helloMsg := AliveMsg{"Alive from ", id, 0}
@@ -100,7 +108,8 @@ func updateLife(id string) {
 	*/
 }
 
-func communicate(localIP string) {
+// Asks slave_address to connect, then sends a message to slave_address, then reads from slave
+func communicate(localIP string, tempMessage testTCPMsg) {
 
 	conn, err := net.DialTimeout("tcp", slave_address, TCP_timeout)
 	if err != nil {
@@ -109,11 +118,12 @@ func communicate(localIP string) {
 	}
 	//defer conn.Close()
 	//Message we send to other client (REMEMBER \000)
-	msg := localIP + "\000"
+	msg := tempMessage.SomeMessage + strconv.Itoa(tempMessage.TempOrder) + "\000"
 	_, err = conn.Write([]byte(msg))
 	if err != nil {
 		fmt.Printf("Failed to send message %v\n", err)
 		return
+		//TODO: fix this err, returns infinitely many "Message: Failed to read message EOF"
 	}
 
 	for {
@@ -124,64 +134,5 @@ func communicate(localIP string) {
 			fmt.Printf("Failed to read message %v\n", err)
 		}
 		fmt.Printf("Message: %v\n", string(buffer[:n]))
-	}
-	//connectToSlave(localIP)
-	//accept(l)
-
-}
-
-// Not currently used, delete later
-func connectToSlave(localIP string) {
-	conn, err := net.DialTimeout("tcp", slave_address, TCP_timeout)
-	if err != nil {
-		fmt.Printf("Some error 1 %v\n", err)
-		return
-	}
-	defer conn.Close()
-	//Message we send to other client (REMEMBER \000)
-	msg := localIP + "\000"
-	_, err = conn.Write([]byte(msg))
-	if err != nil {
-		fmt.Printf("Failed to send message %v\n", err)
-		return
-	}
-
-}
-
-// Not currently use, delete later
-func accept(l net.Listener) {
-
-	l, err := net.Listen("tcp", ":"+"33567")
-	fmt.Printf("\n %s", l)
-	if err != nil {
-		fmt.Printf("Failed to listen message %v\n", err)
-	}
-
-	fmt.Printf("\n Got to accept \n")
-	defer l.Close()
-	for {
-		conn, err := l.Accept()
-		fmt.Printf("\n accept: %t", conn)
-		if err != nil {
-			fmt.Printf("Failed to accept message %v\n", err)
-		}
-		defer conn.Close()
-		fmt.Printf("\n Got past accept \n")
-		buffer := make([]byte, 2048)
-
-		//Reading from slave
-		n, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Printf("Failed to read message %v\n", err)
-		}
-		fmt.Printf("Message: %v", string(buffer[:n]))
-
-	}
-}
-
-// For testing, delete later
-func doEvery(d time.Duration, f func(time.Time)) {
-	for x := range time.Tick(d) {
-		f(x)
 	}
 }
