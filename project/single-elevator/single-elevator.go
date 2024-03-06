@@ -281,7 +281,6 @@ func (e Elevator) AddOrders(floor int, button elevio.ButtonType) {
 	case 2:
 		e.internal_button_array[floor] = true
 	}
-
 }
 
 

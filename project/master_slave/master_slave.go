@@ -10,7 +10,8 @@ import  (
 
 // Layout of the system data
 type SystemData struct{
-	ISMASTER int
+	// The elevator sending the message (who is also master)
+	SENDER int
 	
 	// ALL RECEIVED ORDERS
 	UP_BUTTON_ARRAY 	  *[4]bool
@@ -45,6 +46,7 @@ const (
 type MasterSlave struct {
 	current_data *SystemData
 	elevator_number int
+	is_master bool
 
 }
 //Todo: endre på funksjonene under slik at de matcher systemdata
