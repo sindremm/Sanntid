@@ -4,9 +4,12 @@ package main
 import (
 	// "Driver-go/elevio"
 	// "sync"
+	"elevator/master_slave"
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
+	"strconv"
 )
 
 // const N_ELEVATORS int = 4
@@ -125,11 +128,78 @@ import (
 // 	return order_floor, order_button
 // }
 
-func assembleArgument(systemData SystemData) {
-	
+func assembleArgument(systemData master_slave.SystemData) string {
+
+	arguments := "'{"
+
+	// Add hall requests:
+	up := systemData.UP_BUTTON_ARRAY
+	down := systemData.DOWN_BUTTON_ARRAY
+	requests := make([]string, len(up), len(down))
+
+	for i := 0; i < len(up); i++ {
+		element := []string{fmt.Sprintf("%t", up[i]), fmt.Sprintf("%t", down[i])}
+		requests[i] = "[" + strings.Join(element, ",") + "]"
+	}
+	request_string := "[" + strings.Join(requests, ",") + "]"
+	arguments += "\n\t\"hallRequests\" :\n\t\t" + request_string + ",\n"
+
+	// Assemble states
+	arguments += "\t\"states\" : { \n"
+	elev_number := [3]string{"one", "two", "three"}
+
+	for i := 0; i < len(systemData.ELEVATOR_STATES); i++ {
+		state := systemData.ELEVATOR_STATES[i]
+		if !state.ACTIVE {
+			continue
+		}
+		arguments += "\t\t" + "\"" + elev_number[i] + "\"" + " : {\n\t\t\t"
+
+		arguments += state_to_behaviour(state)
+		new_array := []string{}
+		for _, el := range systemData.INTERNAL_BUTTON_ARRAY[i] {
+			new_array = append(new_array, strconv.FormatBool(el))
+		}
+		arguments += "\"cabRequests\":" + "[" + strings.Join(new_array, ",") + "]" + "\n\t\t}"
+		if i + 2 < len(systemData.ELEVATOR_STATES) {
+			arguments += ","
+		}
+		arguments += "\n"
+	}
+	arguments += "\n\t}\n}\n'"
+	return arguments
 }
 
-func runCommandLine() {
+func state_to_behaviour(state master_slave.ElevatorState) string {
+	output := "\"behaviour\":"
+
+	// TODO add the rest
+
+	// Add behaviour to output
+	if state.INTERNAL_STATE == 0 {
+		output += "\"idle\",\n\t\t\t"
+	} else if state.INTERNAL_STATE == 1 {
+		output += "\"moving\",\n\t\t\t"
+	}
+
+	// Add floor to output
+	output += "\"floor\":" + fmt.Sprintf("%v", state.CURRENT_FLOOR) + ",\n\t\t\t"
+
+	// Add direction to output
+	output += "\"direction\":"
+	if state.Direction == 1 {
+		output += "\"up\",\n"
+	} else if state.Direction == -1 {
+		output += "\"down\",\n"
+	} else if state.Direction == 0 {
+		output += "\"stop\",\n"
+	}
+	output += "\t\t\t"
+
+	return output
+}
+
+func runCommandLine(systemData master_slave.SystemData) {
 	command := "/home/sindre/coding/Sanntid/Project-resources/cost_fns/hall_request_assigner/hall_request_assigner"
 	arg := `{
 	"hallRequests" : 
@@ -149,18 +219,22 @@ func runCommandLine() {
 		}
 	}
 }`
+	// fmt.Printf(arg)
+	arg = assembleArgument(systemData)
+	// fmt.Printf(arg)
+
 	cmd := exec.Command(command, "-i", arg)
 	stdout, err := cmd.Output()
-	fmt.Printf(arg + "\n")
+	// fmt.Printf(arg + "\n")
 
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 	var jsonMap map[string]interface{}
-	json.Unmarshal([]byte(stdout ), &jsonMap)
+	json.Unmarshal([]byte(stdout), &jsonMap)
 
-	fmt.Println(jsonMap["one"])    
+	fmt.Println(jsonMap["one"])
 }
 
 func main() {
@@ -177,5 +251,35 @@ func main() {
 	// go elevio.PollFloorSensor(drv_floors)
 	// go elevio.PollObstructionSwitch(drv_obstr)
 	// go elevio.PollStopButton(drv_stop)
-	runCommandLine()
+	states := [3]master_slave.ElevatorState{
+		{
+			ACTIVE:        true,
+			CURRENT_FLOOR: 2,
+			TARGET_FLOOR:  2,
+			Direction:     1,
+			INTERNAL_STATE: 1},
+		{
+			ACTIVE:        true,
+			CURRENT_FLOOR: 0,
+			TARGET_FLOOR:  2,
+			Direction:     0,
+			INTERNAL_STATE: 0},
+	}
+
+	data := master_slave.SystemData{
+		SENDER:            0,
+		UP_BUTTON_ARRAY:   &([4]bool{false, true, false, false}),
+		DOWN_BUTTON_ARRAY: &([4]bool{false, false, false, true}),
+		INTERNAL_BUTTON_ARRAY: &([3][4]bool{
+			{false, false, true, true},
+			{false, false, false, false},
+			{false, false, true, true},
+		}),
+		WORKING_ELEVATORS: &([4]bool{false, false, true, true}),
+		ELEVATOR_STATES:   &(states),
+		COUNTER:           0,
+	}
+
+	runCommandLine(data)
+
 }
