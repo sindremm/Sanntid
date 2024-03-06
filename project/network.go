@@ -6,7 +6,7 @@ import (
 	//"strings"
 	"time"
 	"elevator/network/localip"
-	//"elevator/network/peers"
+	"elevator/network/peers"
 )
 
 type OrderMessage struct {
@@ -22,9 +22,9 @@ var our_port = "33546"
 
 var localIP string
 
-var slave_IP = "192.168.10.141"
+var slave_IP = "10.100.23.15"
 
-var slave_port = "33546"
+var slave_port = "10005"
 
 var slave_address = slave_IP + ":" + slave_port
 //Comment out sections: ctrl, k c
@@ -36,28 +36,26 @@ func main() {
 	}
 	fmt.Printf("\nIP:", localIP)
 
-	l, err := net.Listen("tcp", ":"+"33567")
-	if err != nil{
-		fmt.Printf("Failed to listen message %v\n", err)
-	}
+	
+	// l, err := net.Listen("tcp", ":"+"33567")
+	// if err != nil{
+	// 	fmt.Printf("Failed to listen message %v\n", err)
+	// }
+	
 
 	//connection := accept()
 	//go handleConnection(connection)
 	//doEvery(2000*time.Millisecond, connectToSlave)
-	//peers.Transmitter(23444, "Hello", true)
-	//peers.Receiver(23333, )
 
-	connectToSlave(localIP)
-	accept(l)
+	peerBool := make(chan bool)
+	peers.Transmitter(33546, "Hello", peerBool)
+
+	//connectToSlave(localIP)
+	//accept(l)
 	
-
-	//handleConnection()
-
 }
 
-func handleConnection(conn net.Conn) {
-	fmt.Printf("\nRemote adress: %s", conn.RemoteAddr().String())
-}
+
 
 func connectToSlave(localIP string) {
 	conn, err := net.DialTimeout("tcp", slave_address, TCP_timeout)
@@ -85,7 +83,7 @@ func accept(l net.Listener){
 	if err != nil{
 		fmt.Printf("Failed to accept message %v\n", err)
 	}
-
+	fmt.Printf("\n Got past accept \n")
 	buffer := make([]byte, 2048)
 
 	//Reading from slave
