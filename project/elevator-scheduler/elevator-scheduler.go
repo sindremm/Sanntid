@@ -47,15 +47,14 @@ func assembleArgument(systemData master_slave.SystemData) MessageStruct {
 			new_states.One = new_state
 		} else if i == 1 {
 			new_states.Two = new_state
+		} else if i == 2 {
+			new_states.Three = new_state
 		}
-		// else if i == 2 {
-		// 	new_states.three = new_state
-		// }
 	}
 
 	// Set the new states
 	new_argument.States = new_states
-	
+
 	return new_argument
 }
 
@@ -76,6 +75,7 @@ func state_to_behaviour(state master_slave.ElevatorState) string {
 	return ""
 }
 
+// Structure containing the data for each elevator
 type singleState struct {
 	Behaviour   string  `json:"behaviour"`
 	Floor       int     `json:"floor"`
@@ -83,35 +83,21 @@ type singleState struct {
 	CabRequests [4]bool `json:"cabRequests"`
 }
 
+// Struct containing the elevators
 type states struct {
-	One singleState `json:"one"`
-	Two singleState `json:"two"`
+	One   singleState `json:"one"`
+	Two   singleState `json:"two"`
+	Three singleState `json:"Three"`
 }
+
+// Structure for the full message
 type MessageStruct struct {
 	HallRequests [4][2]bool `json:"hallRequests"`
 	States       states     `json:"states"`
 }
 
-func runCommandLine(systemData master_slave.SystemData) {
+func CalculateElevatorMovement(systemData master_slave.SystemData) *(map[string][][2]bool) {
 	command := "/home/sindre/coding/Sanntid/Project-resources/cost_fns/hall_request_assigner/hall_request_assigner"
-	arg := `{
-	"hallRequests" : 
-		[[false,false],[true,false],[false,false],[false,true]],
-	"states" : {
-		"one" : {
-			"behaviour":"moving",
-			"floor":2,
-			"direction":"up",
-			"cabRequests":[false,false,true,true]
-		},
-		"two" : {
-			"behaviour":"idle",
-			"floor":0,
-			"direction":"stop",
-			"cabRequests":[false,false,false,false]
-		}
-	}
-}`
 
 	// Create json string
 	new_struct := assembleArgument(systemData)
@@ -119,24 +105,26 @@ func runCommandLine(systemData master_slave.SystemData) {
 
 	if err != nil {
 		fmt.Printf("%s", err)
-		return
+		//TODO: create error output
+		return new(map[string][][2]bool)
 	}
 
-	
 	// Execute command
 	cmd := exec.Command(command, "-i", string(new_json))
 	stdout, err := cmd.Output()
 
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		//TODO: create error output
+		return new(map[string][][2]bool)
 	}
+	
 
 	// Decode to struct
-	var jsonMap MessageStruct
-	json.Unmarshal([]byte(stdout), &jsonMap)
+	output := new(map[string][][2]bool)
+	json.Unmarshal([]byte(stdout), &output)
 
-	fmt.Println(jsonMap.HallRequests)
+	return output
 }
 
 func main() {
@@ -159,13 +147,22 @@ func main() {
 			CURRENT_FLOOR:  2,
 			TARGET_FLOOR:   2,
 			Direction:      1,
-			INTERNAL_STATE: 1},
+			INTERNAL_STATE: 1,
+		},
 		{
 			ACTIVE:         true,
 			CURRENT_FLOOR:  0,
 			TARGET_FLOOR:   2,
 			Direction:      0,
-			INTERNAL_STATE: 0},
+			INTERNAL_STATE: 0,
+		},
+		{
+			ACTIVE:         true,
+			CURRENT_FLOOR:  0,
+			TARGET_FLOOR:   2,
+			Direction:      0,
+			INTERNAL_STATE: 1,
+		},
 	}
 
 	data := master_slave.SystemData{
@@ -182,6 +179,8 @@ func main() {
 		COUNTER:           0,
 	}
 
-	runCommandLine(data)
+	return_msg := CalculateElevatorMovement(data)
+	
+	fmt.Printf("%v", (*return_msg))
 
 }
