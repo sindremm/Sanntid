@@ -23,7 +23,7 @@ type SystemData struct{
 	WORKING_ELEVATORS    *[4]bool
 
 	// POSITION AND TARGET OF EACH ELEVATOR
-	ELEVATOR_STATES	   *[3]ElevatorState
+	ELEVATOR_STATES	   *[]ElevatorState
 
 	// COUNTER FOR MESSAGE SYNCHRONIZATION 
 	COUNTER int
@@ -61,7 +61,7 @@ func NewMasterSlave() *SystemData {
         DOWN_BUTTON_ARRAY: &([4]bool{}),
         INTERNAL_BUTTON_ARRAY: &([3][4]bool{}),
         WORKING_ELEVATORS: &([4]bool{}),
-        ELEVATOR_STATES: &([3]ElevatorState{}),
+        ELEVATOR_STATES: &([]ElevatorState{}),
         COUNTER: 0,
     }
 }

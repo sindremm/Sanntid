@@ -11,6 +11,7 @@ import (
 	// "io/ioutil"
 )
 
+// Create the argument in the correct format for the cost function
 func assembleArgument(systemData master_slave.SystemData) MessageStruct {
 
 	// Create empty struct to store data
@@ -30,12 +31,12 @@ func assembleArgument(systemData master_slave.SystemData) MessageStruct {
 
 	// Assemble states
 	direction_string := [3]string{"stop", "up", "down"}
-	new_states := states{}
-	for i := 0; i < len(systemData.ELEVATOR_STATES); i++ {
+	new_states := make(map[string]singleState)
+	for i := 0; i < len(*systemData.ELEVATOR_STATES); i++ {
 
 		new_state := singleState{}
 
-		state := systemData.ELEVATOR_STATES[i]
+		state := (*systemData.ELEVATOR_STATES)[i]
 
 		new_state.Behaviour = state_to_behaviour(state)
 		new_state.Floor = state.CURRENT_FLOOR
@@ -44,11 +45,11 @@ func assembleArgument(systemData master_slave.SystemData) MessageStruct {
 
 		// Set the values for the corresponding elevator
 		if i == 0 {
-			new_states.One = new_state
+			new_states["one"] = new_state
 		} else if i == 1 {
-			new_states.Two = new_state
+			new_states["two"] = new_state
 		} else if i == 2 {
-			new_states.Three = new_state
+			new_states["three"] = new_state
 		}
 	}
 
@@ -84,22 +85,23 @@ type singleState struct {
 }
 
 // Struct containing the elevators
-type states struct {
-	One   singleState `json:"one"`
-	Two   singleState `json:"two"`
-	Three singleState `json:"Three"`
-}
+// type states struct {
+// 	One   singleState `json:"one"`
+// 	Two   singleState `json:"two"`
+// 	Three singleState `json:"Three"`
+// }
 
 // Structure for the full message
 type MessageStruct struct {
-	HallRequests [4][2]bool `json:"hallRequests"`
-	States       states     `json:"states"`
+	HallRequests [4][2]bool             `json:"hallRequests"`
+	States       map[string]singleState `json:"states"`
 }
 
+// Return the movements of the elevator
 func CalculateElevatorMovement(systemData master_slave.SystemData) *(map[string][][2]bool) {
-	command := "/home/sindre/coding/Sanntid/Project-resources/cost_fns/hall_request_assigner/hall_request_assigner"
+	command := "./hall_request_assigner"
 
-	// Create json string
+	// Create json string from the system data
 	new_struct := assembleArgument(systemData)
 	new_json, err := json.MarshalIndent(new_struct, "", "\t")
 
@@ -109,7 +111,7 @@ func CalculateElevatorMovement(systemData master_slave.SystemData) *(map[string]
 		return new(map[string][][2]bool)
 	}
 
-	// Execute command
+	// Run the cost function to get new orders
 	cmd := exec.Command(command, "-i", string(new_json))
 	stdout, err := cmd.Output()
 
@@ -118,9 +120,8 @@ func CalculateElevatorMovement(systemData master_slave.SystemData) *(map[string]
 		//TODO: create error output
 		return new(map[string][][2]bool)
 	}
-	
 
-	// Decode to struct
+	// Decode the new orders
 	output := new(map[string][][2]bool)
 	json.Unmarshal([]byte(stdout), &output)
 
@@ -129,19 +130,7 @@ func CalculateElevatorMovement(systemData master_slave.SystemData) *(map[string]
 
 func main() {
 
-	// elevio.Init("localhost:15657", N_FLOORS)
-
-	// // Initialize the channels for receiving data from the elevio interface
-	// drv_buttons := make(chan elevio.ButtonEvent)
-	// drv_floors := make(chan int)
-	// drv_obstr := make(chan bool)
-	// drv_stop := make(chan bool)
-
-	// go elevio.PollButtons(drv_buttons)
-	// go elevio.PollFloorSensor(drv_floors)
-	// go elevio.PollObstructionSwitch(drv_obstr)
-	// go elevio.PollStopButton(drv_stop)
-	states := [3]master_slave.ElevatorState{
+	states := []master_slave.ElevatorState{
 		{
 			ACTIVE:         true,
 			CURRENT_FLOOR:  2,
@@ -180,7 +169,7 @@ func main() {
 	}
 
 	return_msg := CalculateElevatorMovement(data)
-	
+
 	fmt.Printf("%v", (*return_msg))
 
 }
