@@ -12,7 +12,10 @@ import  (
 )
 
 
-
+type MasterSlave struct {
+	CURRENT_DATA *structs.SystemData
+	ELEVATOR_NUMBER int
+}
 
 func NewMasterSlave() *structs.SystemData {
     return &structs.SystemData{
@@ -27,7 +30,7 @@ func NewMasterSlave() *structs.SystemData {
 }
 
 // HandleOrderFromMaster is a method on the MasterSlave struct that processes an order from the master.
-func (ms *structs.MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error {
+func (ms *MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error {
 	// Check if the target floor in the order is valid (between 0 and 3)
 	if order.TARGET_FLOOR < 0 || order.TARGET_FLOOR > structs.N_FLOORS {
 		return fmt.Errorf("Invalid order: floor must be between 0 and 3")
@@ -55,15 +58,15 @@ func (ms *structs.MasterSlave) HandleOrderFromMaster(order *structs.ElevatorStat
 	return nil
 }
 
-func (ms *structs.SystemData) SwitchToBackup() {
-	ms.SENDER = 0
-	fmt.Println("Master is dead, switching to backup")
-}
+// func (ms *structs.SystemData) SwitchToBackup() {
+// 	ms.SENDER = 0
+// 	fmt.Println("Master is dead, switching to backup")
+// }
 
 
 var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 
-func StartMasterSlave(leader *structs.Elevator) {
+func StartMasterSlave(leader *Elevator) {
 	//Set the leader as the Master
 	leader.Master = true
 
@@ -71,7 +74,7 @@ func StartMasterSlave(leader *structs.Elevator) {
 	print_counter := time.Now()
 	counter := 0
 
-	ms := &structs.MasterSlave{}
+	ms := &MasterSlave{}
 
 
 	filename := "/home/student/Documents/AjananMiaSindre/Sanntid/exercise_4/main.go"

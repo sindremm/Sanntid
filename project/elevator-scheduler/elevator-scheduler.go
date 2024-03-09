@@ -4,7 +4,6 @@ package main
 import (
 	// "Driver-go/elevio"
 	// "sync"
-	"elevator/master_slave"
 	"elevator/structs"
 	"encoding/json"
 	"fmt"
@@ -13,7 +12,7 @@ import (
 )
 
 // Create the argument in the correct format for the cost function
-func assembleArgument(systemData master_slave.SystemData) MessageStruct {
+func assembleArgument(systemData structs.SystemData) MessageStruct {
 
 	// Create empty struct to store data
 	new_argument := MessageStruct{}
@@ -41,7 +40,7 @@ func assembleArgument(systemData master_slave.SystemData) MessageStruct {
 
 		new_state.Behaviour = state_to_behaviour(state)
 		new_state.Floor = state.CURRENT_FLOOR
-		new_state.Direction = direction_string[state.Direction]
+		new_state.Direction = direction_string[state.DIRECTION]
 		new_state.CabRequests = systemData.INTERNAL_BUTTON_ARRAY[i]
 
 		// Set the values for the corresponding elevator
@@ -61,7 +60,7 @@ func assembleArgument(systemData master_slave.SystemData) MessageStruct {
 }
 
 // Translate the elevators state to the corresponding string value
-func state_to_behaviour(state master_slave.ElevatorState) string {
+func state_to_behaviour(state structs.ElevatorState) string {
 	// TODO: Find correct corresponding states
 	if state.INTERNAL_STATE == 0 {
 		return "idle"
@@ -99,7 +98,7 @@ type MessageStruct struct {
 }
 
 // Return the movements of the elevator
-func CalculateElevatorMovement(systemData master_slave.SystemData) *(map[string][][2]bool) {
+func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][][2]bool) {
 	command := "./hall_request_assigner"
 
 	// Create json string from the system data
@@ -131,31 +130,31 @@ func CalculateElevatorMovement(systemData master_slave.SystemData) *(map[string]
 
 func main() {
 
-	states := []master_slave.ElevatorState{
+	states := []structs.ElevatorState{
 		{
 			ACTIVE:         true,
 			CURRENT_FLOOR:  2,
 			TARGET_FLOOR:   2,
-			Direction:      1,
+			DIRECTION:      1,
 			INTERNAL_STATE: 1,
 		},
 		{
 			ACTIVE:         true,
 			CURRENT_FLOOR:  0,
 			TARGET_FLOOR:   2,
-			Direction:      0,
+			DIRECTION:      0,
 			INTERNAL_STATE: 0,
 		},
 		{
 			ACTIVE:         true,
 			CURRENT_FLOOR:  0,
 			TARGET_FLOOR:   2,
-			Direction:      0,
+			DIRECTION:      0,
 			INTERNAL_STATE: 1,
 		},
 	}
 
-	data := master_slave.SystemData{
+	data := structs.SystemData{
 		SENDER:            0,
 		UP_BUTTON_ARRAY:   &([structs.N_FLOORS]bool{false, true, false, false}),
 		DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{false, false, false, true}),
