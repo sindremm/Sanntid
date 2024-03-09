@@ -11,6 +11,10 @@ import  (
 	"elevator/structs"
 )
 
+type MasterSlave struct {
+	CURRENT_DATA *structs.SystemData
+	ELEVATOR_NUMBER int
+}
 
 
 
@@ -27,25 +31,25 @@ func NewMasterSlave() *structs.SystemData {
 }
 
 // HandleOrderFromMaster is a method on the MasterSlave struct that processes an order from the master.
-func (ms *structs.MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error {
+func (ms *MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error {
 	// Check if the target floor in the order is valid (between 0 and 3)
 	if order.TARGET_FLOOR < 0 || order.TARGET_FLOOR > structs.N_FLOORS {
 		return fmt.Errorf("Invalid order: floor must be between 0 and 3")
 	}
 	//TODO: update to be 0, 1 and 2
-	// Check if the direction in the order is valid (-1 for down, 0 for internal, 1 for up)
-	if order.DIRECTION < -1 || order.DIRECTION > 1 {
-		return fmt.Errorf("Invalid order: direction must be -1, 0 or 1")
+	// Check if the direction in the order is valid (0 for stop, 1 for up, 2 for down)
+	if order.DIRECTION < 0 || order.DIRECTION > 2 {
+		return fmt.Errorf("Invalid order: direction must be 0, 1 or 2")
 	}
 
 	// Update the SystemData based on the order
 	// If the direction is 1 (up), set the corresponding floor in the up button array to true
 	if order.DIRECTION == 1 {
 		ms.CURRENT_DATA.UP_BUTTON_ARRAY[order.TARGET_FLOOR] = true
-	// If the direction is -1 (down), set the corresponding floor in the down button array to true
-	} else if order.DIRECTION == -1 {
+	// If the direction is 2 (down), set the corresponding floor in the down button array to true
+	} else if order.DIRECTION == 2 {
 		ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[order.TARGET_FLOOR] = true
-	// If the direction is 0 (internal), set the corresponding floor in the internal button array to true
+	// If the direction is 0 (stop), do nothing
 	} else {
 		// TODO: Set internal orders for given elevator
 		// ms.current_data.INTERNAL_BUTTON_ARRAY[order.TARGET_FLOOR] = true
@@ -55,7 +59,7 @@ func (ms *structs.MasterSlave) HandleOrderFromMaster(order *structs.ElevatorStat
 	return nil
 }
 
-func (ms *structs.SystemData) SwitchToBackup() {
+func SwitchToBackup(ms *structs.SystemData) {
 	ms.SENDER = 0
 	fmt.Println("Master is dead, switching to backup")
 }
@@ -63,7 +67,7 @@ func (ms *structs.SystemData) SwitchToBackup() {
 
 var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 
-func StartMasterSlave(leader *structs.Elevator) {
+func StartMasterSlave(leader *Elevator) {
 	//Set the leader as the Master
 	leader.Master = true
 
@@ -71,7 +75,7 @@ func StartMasterSlave(leader *structs.Elevator) {
 	print_counter := time.Now()
 	counter := 0
 
-	ms := &structs.MasterSlave{}
+	ms := &MasterSlave{}
 
 
 	filename := "/home/student/Documents/AjananMiaSindre/Sanntid/exercise_4/main.go"

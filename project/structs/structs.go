@@ -50,12 +50,6 @@ const (
 )
 
 
-type MasterSlave struct {
-	CURRENT_DATA *SystemData
-	ELEVATOR_NUMBER int
-}
-
-
 // ###################### Single Elevator ##########################3
 type SingleElevatorState int
 const (
