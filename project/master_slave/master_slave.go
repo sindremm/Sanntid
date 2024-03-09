@@ -7,70 +7,32 @@ import  (
 	//"strconv"
 	"time"
 	"encoding/gob"
-)
 
-// Layout of the system data
-type SystemData struct{
-	// The elevator sending the message (who is also master)
-	SENDER int
-	
-	// ALL RECEIVED ORDERS
-	UP_BUTTON_ARRAY 	  *[4]bool
-	DOWN_BUTTON_ARRAY     *[4]bool
-	INTERNAL_BUTTON_ARRAY *[3][4]bool
-
-	// ALL CURRENTLY WORKING ELEVATORS
-	WORKING_ELEVATORS    *[4]bool
-
-	// POSITION AND TARGET OF EACH ELEVATOR
-	ELEVATOR_STATES	   *[]ElevatorState
-
-	// COUNTER FOR MESSAGE SYNCHRONIZATION 
-	COUNTER int
-
-}
-
-
-type ElevatorState struct{
-	ACTIVE bool
-	INTERNAL_STATE int // State machine state of elevator
-	CURRENT_FLOOR int
-	TARGET_FLOOR int
-	//TODO: update usage of direction
-	DIRECTION int // 0 for stop, 1 for up, 2 for down
-}
-
-const (
-	SERVER_IP_ADDRESS = "127.0.0.1"
-	PORT = "20005"
-	FILENAME = "home/student/Documents/AjananMiaSindre/Sanntid/project/driver-go/master_slave/master_slave.go"
+	"elevator/structs"
 )
 
 
-type MasterSlave struct {
-	CURRENT_DATA *SystemData
-	ELEVATOR_NUMBER int
 
-}
 
-func NewMasterSlave() *SystemData {
-    return &SystemData{
+func NewMasterSlave() *structs.SystemData {
+    return &structs.SystemData{
         SENDER: 0,
-        UP_BUTTON_ARRAY: &([4]bool{}),
-        DOWN_BUTTON_ARRAY: &([4]bool{}),
-        INTERNAL_BUTTON_ARRAY: &([3][4]bool{}),
-        WORKING_ELEVATORS: &([4]bool{}),
-        ELEVATOR_STATES: &([]ElevatorState{}),
+        UP_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
+        DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
+        INTERNAL_BUTTON_ARRAY: &([structs.N_ELEVATORS][structs.N_FLOORS]bool{}),
+        WORKING_ELEVATORS: &([structs.N_FLOORS]bool{}),
+        ELEVATOR_STATES: &([]structs.ElevatorState{}),
         COUNTER: 0,
     }
 }
 
 // HandleOrderFromMaster is a method on the MasterSlave struct that processes an order from the master.
-func (ms *MasterSlave) HandleOrderFromMaster(order *ElevatorState) error {
+func (ms *structs.MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error {
 	// Check if the target floor in the order is valid (between 0 and 3)
-	if order.TARGET_FLOOR < 0 || order.TARGET_FLOOR > 3 {
+	if order.TARGET_FLOOR < 0 || order.TARGET_FLOOR > structs.N_FLOORS {
 		return fmt.Errorf("Invalid order: floor must be between 0 and 3")
 	}
+	//TODO: update to be 0, 1 and 2
 	// Check if the direction in the order is valid (-1 for down, 0 for internal, 1 for up)
 	if order.DIRECTION < -1 || order.DIRECTION > 1 {
 		return fmt.Errorf("Invalid order: direction must be -1, 0 or 1")
@@ -93,15 +55,15 @@ func (ms *MasterSlave) HandleOrderFromMaster(order *ElevatorState) error {
 	return nil
 }
 
-func (ms *SystemData) SwitchToBackup() {
+func (ms *structs.SystemData) SwitchToBackup() {
 	ms.SENDER = 0
 	fmt.Println("Master is dead, switching to backup")
 }
 
 
-var fullAddress = SERVER_IP_ADDRESS + ":" + PORT
+var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 
-func StartMasterSlave(leader *Elevator) {
+func StartMasterSlave(leader *structs.Elevator) {
 	//Set the leader as the Master
 	leader.Master = true
 
@@ -109,7 +71,7 @@ func StartMasterSlave(leader *Elevator) {
 	print_counter := time.Now()
 	counter := 0
 
-	ms := &MasterSlave{}
+	ms := &structs.MasterSlave{}
 
 
 	filename := "/home/student/Documents/AjananMiaSindre/Sanntid/exercise_4/main.go"
@@ -135,7 +97,7 @@ func StartMasterSlave(leader *Elevator) {
 			defer conn.Close()
 
 			// Receive SystemData from the master
-			data := &SystemData{}
+			data := &structs.SystemData{}
 			if err := receiveSystemData(conn, data); err != nil {
 				fmt.Printf("Error receiving SystemData: %v\n", err)
 				return
@@ -164,7 +126,7 @@ func StartMasterSlave(leader *Elevator) {
 // sendSystemData is a function that sends SystemData over a TCP connection.
 // It takes a net.Conn object representing the connection and a pointer to the SystemData object to be sent.
 // It returns an error if any occurs during the process.
-func sendSystemData(conn net.Conn, data *SystemData) error {
+func sendSystemData(conn net.Conn, data *structs.SystemData) error {
 	// Create a new encoder that will write to conn
 	encoder := gob.NewEncoder(conn)
 	// Encode the SystemData object and send it over the connection
@@ -179,7 +141,7 @@ func sendSystemData(conn net.Conn, data *SystemData) error {
 // receiveSystemData is a function that receives SystemData over a TCP connection.
 // It takes a net.Conn object representing the connection and a pointer to the SystemData object where the received data will be stored.
 // It returns an error if any occurs during the process.
-func receiveSystemData(conn net.Conn, data *SystemData) error {
+func receiveSystemData(conn net.Conn, data *structs.SystemData) error {
 	// Create a new decoder that will read from conn
 	decoder := gob.NewDecoder(conn)
 	// Decode the received data and store it in the SystemData object

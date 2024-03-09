@@ -10,22 +10,11 @@ import (
 	"elevator/network/bcast"
 	"elevator/network/localip"
 	"elevator/network/peers"
+	"elevator/structs"
 	"time"
 )
 
-type AliveMsg struct {
-	Message string
-	address string
-	Iter    int
-}
 
-type testTCPMsg struct {
-	SomeMessage string
-	TempOrder   int
-}
-
-// Changes timeout time for Dial. 500 milliseconds = 0.5 second
-var TCP_timeout = 500 * time.Millisecond
 
 var slave_IP = "10.100.23.15"
 
@@ -54,7 +43,7 @@ func main() {
 
 	fmt.Printf("\n %v %v \n", peers_port, broadcast_port)
 
-	tempMessage := testTCPMsg{"Hello", 544}
+	tempMessage := structs.testTCPMsg{"Hello", 544}
 
 	//updateLife(id, peers_port, broadcast_port)
 	//checkForLife(id, peers_port, broadcast_port)
@@ -68,7 +57,7 @@ func checkForLife(id string, peers_port int, broadcast_port int) {
 
 	go peers.Receiver(peers_port, peers_update_channel)
 
-	aliveCheck := make(chan AliveMsg)
+	aliveCheck := make(chan structs.AliveMsg)
 
 	go bcast.Receiver(broadcast_port, aliveCheck)
 
@@ -91,7 +80,7 @@ func updateLife(id string, peers_port int, broadcast_port int) {
 	peer_bool := make(chan bool)
 	go peers.Transmitter(peers_port, id, peer_bool)
 
-	aliveUpdateMsg := make(chan AliveMsg)
+	aliveUpdateMsg := make(chan structs.AliveMsg)
 
 	go bcast.Transmitter(broadcast_port, aliveUpdateMsg)
 
@@ -109,9 +98,9 @@ func updateLife(id string, peers_port int, broadcast_port int) {
 }
 
 // Asks slave_address to connect, then sends a message to slave_address, then reads from slave
-func communicate(localIP string, tempMessage testTCPMsg) {
+func communicate(localIP string, tempMessage structs.testTCPMsg) {
 
-	conn, err := net.DialTimeout("tcp", slave_address, TCP_timeout)
+	conn, err := net.DialTimeout("tcp", slave_address, structs.TCP_timeout)
 	if err != nil {
 		fmt.Printf("Some error 1 %v\n", err)
 		return

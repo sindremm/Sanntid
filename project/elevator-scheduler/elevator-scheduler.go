@@ -5,6 +5,7 @@ import (
 	// "Driver-go/elevio"
 	// "sync"
 	"elevator/master_slave"
+	"elevator/structs"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -156,14 +157,14 @@ func main() {
 
 	data := master_slave.SystemData{
 		SENDER:            0,
-		UP_BUTTON_ARRAY:   &([4]bool{false, true, false, false}),
-		DOWN_BUTTON_ARRAY: &([4]bool{false, false, false, true}),
-		INTERNAL_BUTTON_ARRAY: &([3][4]bool{
+		UP_BUTTON_ARRAY:   &([structs.N_FLOORS]bool{false, true, false, false}),
+		DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{false, false, false, true}),
+		INTERNAL_BUTTON_ARRAY: &([structs.N_ELEVATORS][structs.N_FLOORS]bool{
 			{false, false, true, true},
 			{false, false, false, false},
 			{false, false, true, true},
 		}),
-		WORKING_ELEVATORS: &([4]bool{false, false, true, true}),
+		WORKING_ELEVATORS: &([structs.N_FLOORS]bool{false, false, true, true}),
 		ELEVATOR_STATES:   &(states),
 		COUNTER:           0,
 	}

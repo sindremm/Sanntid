@@ -2,6 +2,7 @@ package singleelev
 
 import (
 	"Driver-go/elevio"
+	"elevator/structs"
 	// "flag"
 	// "fmt"
 	// "os"
@@ -9,25 +10,6 @@ import (
 	"time"
 )
 
-
-var numFloors int = 4
-
-type State int
-
-const (
-	IDLE State = iota
-	MOVING
-	STOPPED
-	DOOR_OPEN
-)
-
-type Direction int
-
-const (
-	UP Direction = iota
-	DOWN
-	STILL
-)
 
 // Temporary placement of Mutex
 var order_mutex sync.Mutex
@@ -45,7 +27,7 @@ type Elevator struct {
 	internal_button_array *[4]bool
 
 	// Variable containing the current state
-	internal_state *State
+	internal_state *structs.State
 
 	// Variable showing the last visited floor
 	at_floor *int
@@ -54,7 +36,7 @@ type Elevator struct {
 	target_floor *int
 
 	// Variable for the direction of the elevator
-	moving_direction *Direction
+	moving_direction *structs.Direction
 
 	// Variable for keeping track of when interrupt ends
 	interrupt_end *time.Time
@@ -62,7 +44,7 @@ type Elevator struct {
 
 func MakeElevator() Elevator {
 	// Set state to idle
-	var start_state State = IDLE
+	var start_state structs.State = structs.IDLE
 
 	// Exception value
 	starting_floor := -1
@@ -71,12 +53,12 @@ func MakeElevator() Elevator {
 	target_floor := -1
 
 	// Starting direction
-	starting_direction := STILL
+	starting_direction := structs.STILL
 
 	// Initialize empty button arrays
-	up_array := [4]bool{}
-	down_array := [4]bool{}
-	internal_array := [4]bool{}
+	up_array := [structs.N_FLOORS]bool{}
+	down_array := [structs.N_FLOORS]bool{}
+	internal_array := [structs.N_FLOORS]bool{}
 
 	// Pointer values
 	floor_number := -1
@@ -105,7 +87,7 @@ func (e Elevator) Main() {
 
 	if *e.at_floor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Up)
-		*e.internal_state = MOVING
+		*e.internal_state = structs.MOVING
 	}
 
 	// fmt.Printf("%s", e.internal_state)
@@ -116,7 +98,7 @@ func (e Elevator) Main() {
 		//fmt.Printf("Obstructed: %t \n", *e.current_floor)
 		if *e.is_stopped {
 			// fmt.Print("Stop\n")
-			*e.internal_state = STOPPED
+			*e.internal_state = structs.STOPPED
 		}
 
 		// fmt.Printf("current floor: %d\n", *e.current_floor)
@@ -129,7 +111,7 @@ func (e Elevator) Main() {
 		// fmt.Printf("---\n")
 
 		switch state := *e.internal_state; state {
-		case IDLE:
+		case structs.IDLE:
 			// fmt.Printf("Idle\n")
 
 			// Update floor when channel gets new value
@@ -150,7 +132,7 @@ func (e Elevator) Main() {
 			}
 			
 
-		case MOVING:
+		case structs.MOVING:
 			// fmt.Printf("Moving\n")
 
 			// Run when arriving at new floor
@@ -160,11 +142,11 @@ func (e Elevator) Main() {
 				e.Visit_floor()
 			}
 
-		case DOOR_OPEN:
+		case structs.DOOR_OPEN:
 			// fmt.Printf("open door\n")
 			e.OpenDoor()
 
-		case STOPPED:
+		case structs.STOPPED:
 			e.Stop()
 		}
 		// time.Sleep(500 * time.Millisecond)
@@ -297,7 +279,7 @@ func (e Elevator) Visit_floor() {
 	// Run when no floor at initialization
 	if *e.target_floor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Stop)
-		*e.internal_state = IDLE
+		*e.internal_state = structs.IDLE
 	}
 
 	*e.at_floor = *e.current_floor
@@ -315,7 +297,7 @@ func (e Elevator) Visit_floor() {
 
 	// Remove orders in same direction, and sets door to open
 	switch *e.moving_direction {
-	case UP:
+	case structs.UP:
 		if e.up_button_array[*e.at_floor] {
 			e.up_button_array[*e.at_floor] = false
 			elevio.SetButtonLamp(0, *e.at_floor, false)
@@ -324,7 +306,7 @@ func (e Elevator) Visit_floor() {
 			// Open door
 			e.TransitionToOpenDoor()
 		}
-	case DOWN:
+	case structs.DOWN:
 		if e.down_button_array[*e.at_floor] {
 			e.down_button_array[*e.at_floor] = false
 			elevio.SetButtonLamp(1, *e.at_floor, false)
@@ -356,7 +338,7 @@ func (e Elevator) Visit_floor() {
 func (e Elevator) TransitionToOpenDoor() {
 	elevio.SetMotorDirection(elevio.MD_Stop)
 	elevio.SetDoorOpenLamp(true)
-	*e.internal_state = DOOR_OPEN
+	*e.internal_state = structs.DOOR_OPEN
 }
 
 func (e Elevator) OpenDoor() {
@@ -370,7 +352,7 @@ func (e Elevator) OpenDoor() {
 		time.Sleep(3 * time.Second)
 		elevio.SetDoorOpenLamp(false)
 
-		*e.internal_state = IDLE
+		*e.internal_state = structs.IDLE
 
 		// Remove target if current floor is target floor
 		if *e.at_floor == *e.target_floor {
@@ -382,13 +364,13 @@ func (e Elevator) OpenDoor() {
 
 func (e Elevator) MoveToTarget() {
 	// Set state to MOVING and set motor direction
-	*e.internal_state = MOVING
+	*e.internal_state = structs.MOVING
 
 	if *e.target_floor > *e.at_floor {
-		*e.moving_direction = UP
+		*e.moving_direction = structs.UP
 		elevio.SetMotorDirection(elevio.MD_Up)
 	} else if *e.target_floor < *e.at_floor {
-		*e.moving_direction = DOWN
+		*e.moving_direction = structs.DOWN
 		elevio.SetMotorDirection(elevio.MD_Down)
 	}
 }
@@ -404,7 +386,7 @@ func (e Elevator) Stop() {
 
 	if !elevator_stop {
 		time.Sleep(3 * time.Second)
-		*e.internal_state = IDLE
+		*e.internal_state = structs.IDLE
 		elevio.SetStopLamp(false)
 		elevio.SetDoorOpenLamp(false)
 		// fmt.Print(e.internal_state)
@@ -423,7 +405,7 @@ func ResetElevator() {
 	elevio.SetDoorOpenLamp(false)
 
 	// Reset all order lights
-	for f := 0; f < numFloors; f++ {
+	for f := 0; f < structs.N_FLOORS; f++ {
 		for b := elevio.ButtonType(0); b < 3; b++ {
 			elevio.SetButtonLamp(b, f, false)
 		}
