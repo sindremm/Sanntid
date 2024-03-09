@@ -73,7 +73,7 @@ type AliveMsg struct {
 	Iter    int
 }
 
-type testTCPMsg struct {
+type TestTCPMsg struct {
 	SomeMessage string
 	TempOrder   int
 }

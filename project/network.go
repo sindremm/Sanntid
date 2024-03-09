@@ -11,12 +11,12 @@ import (
 	"elevator/network/localip"
 	"elevator/network/peers"
 	"elevator/structs"
-	"time"
+	//"time"
 )
 
 
 
-var slave_IP = "10.100.23.15"
+var slave_IP = "172.23.70.94"
 
 var slave_port = "10005"
 
@@ -43,14 +43,14 @@ func main() {
 
 	fmt.Printf("\n %v %v \n", peers_port, broadcast_port)
 
-	tempMessage := structs.testTCPMsg{"Hello", 544}
+	//tempMessage := structs.TestTCPMsg{"Hello", 544}
 
-	//updateLife(id, peers_port, broadcast_port)
-	//checkForLife(id, peers_port, broadcast_port)
-	communicate(localIP, tempMessage)
+	updateLife(id, peers_port, broadcast_port)
+	checkForLife(id, peers_port, broadcast_port)
+	//communicate(localIP, tempMessage)
 }
 
-// Gets information on life status on the peers of the network
+// Gets information on life status on the peers of the local network
 func checkForLife(id string, peers_port int, broadcast_port int) {
 
 	peers_update_channel := make(chan peers.PeerUpdate)
@@ -75,7 +75,7 @@ func checkForLife(id string, peers_port int, broadcast_port int) {
 	}
 }
 
-// Sends message on life status
+// Sends message on life status on local network
 func updateLife(id string, peers_port int, broadcast_port int) {
 	peer_bool := make(chan bool)
 	go peers.Transmitter(peers_port, id, peer_bool)
@@ -98,7 +98,7 @@ func updateLife(id string, peers_port int, broadcast_port int) {
 }
 
 // Asks slave_address to connect, then sends a message to slave_address, then reads from slave
-func communicate(localIP string, tempMessage structs.testTCPMsg) {
+func communicate(localIP string, tempMessage structs.TestTCPMsg) {
 
 	conn, err := net.DialTimeout("tcp", slave_address, structs.TCP_timeout)
 	if err != nil {

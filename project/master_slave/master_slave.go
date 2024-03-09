@@ -16,7 +16,10 @@ type MasterSlave struct {
 	ELEVATOR_NUMBER int
 }
 
-
+type MasterSlave struct {
+	CURRENT_DATA *structs.SystemData
+	ELEVATOR_NUMBER int
+}
 
 func NewMasterSlave() *structs.SystemData {
     return &structs.SystemData{
@@ -59,10 +62,10 @@ func (ms *MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error
 	return nil
 }
 
-func SwitchToBackup(ms *structs.SystemData) {
-	ms.SENDER = 0
-	fmt.Println("Master is dead, switching to backup")
-}
+// func (ms *structs.SystemData) SwitchToBackup() {
+// 	ms.SENDER = 0
+// 	fmt.Println("Master is dead, switching to backup")
+// }
 
 
 var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
