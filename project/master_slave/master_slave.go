@@ -33,7 +33,7 @@ type SystemData struct{
 type ElevatorState struct{
 	CURRENT_FLOOR int
 	TARGET_FLOOR int
-	Direction int // 1 for up, -1 for down, 0 for internal
+	DIRECTION int // 1 for up, -1 for down, 0 for internal
 }
 
 const (
@@ -44,11 +44,10 @@ const (
 
 
 type MasterSlave struct {
-	current_data *SystemData
-	elevator_number int
+	CURRENT_DATA *SystemData
+	ELEVATOR_NUMBER int
 
 }
-//Todo: endre på funksjonene under slik at de matcher systemdata
 
 func NewMasterSlave() *SystemData {
     return &SystemData{
@@ -69,23 +68,23 @@ func (ms *MasterSlave) HandleOrderFromMaster(order *ElevatorState) error {
 		return fmt.Errorf("Invalid order: floor must be between 0 and 3")
 	}
 	// Check if the direction in the order is valid (-1 for down, 0 for internal, 1 for up)
-	if order.Direction < -1 || order.Direction > 1 {
+	if order.DIRECTION < -1 || order.DIRECTION > 1 {
 		return fmt.Errorf("Invalid order: direction must be -1, 0 or 1")
 	}
 
 	// Update the SystemData based on the order
 	// If the direction is 1 (up), set the corresponding floor in the up button array to true
-	if order.Direction == 1 {
-		ms.current_data.UP_BUTTON_ARRAY[order.TARGET_FLOOR] = true
+	if order.DIRECTION == 1 {
+		ms.CURRENT_DATA.UP_BUTTON_ARRAY[order.TARGET_FLOOR] = true
 	// If the direction is -1 (down), set the corresponding floor in the down button array to true
-	} else if order.Direction == -1 {
-		ms.current_data.DOWN_BUTTON_ARRAY[order.TARGET_FLOOR] = true
+	} else if order.DIRECTION == -1 {
+		ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[order.TARGET_FLOOR] = true
 	// If the direction is 0 (internal), set the corresponding floor in the internal button array to true
 	} else {
-		ms.current_data.INTERNAL_BUTTON_ARRAY[order.TARGET_FLOOR] = true
+		ms.CURRENT_DATA.INTERNAL_BUTTON_ARRAY[order.TARGET_FLOOR] = true
 	}
 	// Print a message indicating that the order has been processed
-	fmt.Printf("Order for floor %d with direction %d has been processed.\n", order.TARGET_FLOOR, order.Direction)
+	fmt.Printf("Order for floor %d with direction %d has been processed.\n", order.TARGET_FLOOR, order.DIRECTION)
 	return nil
 }
 
@@ -97,12 +96,16 @@ func (ms *SystemData) SwitchToBackup() {
 
 var fullAddress = SERVER_IP_ADDRESS + ":" + PORT
 
-func main() {
+func StartMasterSlave(leader *Elevator) {
+	//Set the leader as the Master
+	leader.Master = true
+
 	// start_time := time.Now()
 	print_counter := time.Now()
 	counter := 0
 
 	ms := &MasterSlave{}
+
 
 	filename := "/home/student/Documents/AjananMiaSindre/Sanntid/exercise_4/main.go"
 
@@ -141,8 +144,8 @@ func main() {
 		// Send SystemData to the master periodically
 		if time.Since(print_counter).Seconds() > 1 {
 			counter++
-			ms.current_data.COUNTER = counter
-			if err := sendSystemData(conn, ms.current_data); err != nil {
+			ms.CURRENT_DATA.COUNTER = counter
+			if err := sendSystemData(conn, ms.CURRENT_DATA); err != nil {
 				fmt.Printf("Error sending SystemData: %v\n", err)
 			}
 
@@ -184,46 +187,3 @@ func receiveSystemData(conn net.Conn, data *SystemData) error {
 }
 
 
-// UDP 
-// func send(counter int) {
-// 	conn, err := net.Dial("udp", fullAddress)
-// 	if err != nil {
-// 		fmt.Printf("Some error 1 %v \n", err)
-// 		return
-// 	}
-// 	defer conn.Close()
-	
-// 	_, err = fmt.Fprintf(conn, "%d", counter)
-// 	if err != nil {
-// 		fmt.Printf("error 3: %s \n", err)
-// 	}
-// }
-
-/*
-func listen(start_time *time.Time, counter int, ms *MasterSlave) (int){
-	p := make([]byte, 2048)
-
-	ServerAddr, err := net.ResolveUDPAddr("udp", fullAddress)
-	if err != nil {
-		fmt.Printf("Some error %v", err)
-		return -1
-	}
-
-	conn, err := net.ListenUDP("udp", ServerAddr)
-	if err != nil {
-		fmt.Printf("Some error 1a %v", err)
-		return -1
-	}
-	defer conn.Close()
-
-	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
-	n, _, err := conn.ReadFromUDP(p)
-
-	if err == nil {
-		counter, err = strconv.Atoi(string(p[:n]))
-		*start_time = time.Now()
-	} 
-	
-	return counter
-}
-*/
