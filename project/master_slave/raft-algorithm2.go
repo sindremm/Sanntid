@@ -49,7 +49,11 @@ func NewElevator(id int, conn net.Conn) *Elevator {
 }
 
 //Map for the elevators
-var elevator_map = make(map[int]string)
+var ElevatorMap = make(map[int]string)
+
+func UpdateElevatorMap(int, string){
+
+}
 
 //Encodes systemData to []byte to be sent by TCP
 func EncodeSystemData(s *SystemData) ([]byte, error){
@@ -61,14 +65,14 @@ func EncodeSystemData(s *SystemData) ([]byte, error){
 }
 
 //Decodes SystemData 
-func DecodeSystemData(data []byte, v any) error{
+func DecodeSystemData(data []byte, v any) SystemData{
 	var systemData SystemData
 
 	err := json.Unmarshal([]byte(data), &systemData)
 	if err != nil {
         log.Fatalf("Error with decoding:  %s", err)
     }
-	return err
+	return systemData
 }
 
 // BroadcastID sends the ID of the current elevator to all other elevators.
