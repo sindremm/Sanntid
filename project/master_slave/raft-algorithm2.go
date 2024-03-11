@@ -1,18 +1,22 @@
 package master_slave
 
 import (
-	"bufio"
+	//"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"net"
 	"os"
-	"strconv"
+	//"strconv"
 	"strings"
 	"sync"
 	"time"
+	"elevator/network/bcast"
+	"elevator/network/peers"
+	"elevator/structs"
 )
+//TODO: endre navnet fra raft-agortihm2 til election_algorithm
 
 type Elevator struct {
 	Id              int
@@ -24,11 +28,22 @@ type Elevator struct {
 	VotesReceived   int
 	Term int
 	VotedInTerm int
+	IsElectionStarter bool
+	PORT int
 
 	//TCP connection
 	Conn   net.Conn
-	ID     int
+	ID     string
+	Timestamp int64
 	Master bool
+
+}
+
+// VoteMsg represents a vote message
+type VoteMsg struct {
+    ID string
+    Term int
+    Vote int
 }
 
 type State struct {
@@ -82,43 +97,75 @@ func (e *Elevator) ReceiveBroadcast(id int) {
 	}
 }
 
-// SendVote sends a vote to another elevator.
+// SendVote sends a vote to all other elevators.
 func (e *Elevator) SendVote(vote int) {
-    // Only send a vote if the elevator has not already voted in the current term.
-    if e.VotedInTerm != e.Term {
-        _, err := fmt.Fprintf(e.Conn, "VOTE:%d\n", vote)
-        if err != nil {
-            log.Printf("Failed to send vote: %v", err)
-        }
-        fmt.Printf("Sent vote: %d\n", vote) // add this line
-        // Update the term in which the elevator last voted.
-        e.VotedInTerm = e.Term
-    }
+	// Only send a vote if the elevator has not already voted in the current term.
+	if e.VotedInTerm != e.Term {
+		// Create a new vote message with the elevator's ID, the current term, and the vote.
+		voteMsg := VoteMsg{ID: e.ID, Term: e.Term, Vote: vote}
+
+		// Define the base port number. Replace with the actual base port number.
+		basePort := 15657 
+
+		// Loop over all elevators in the system.
+		for i, elevator := range e.Elevators {
+			// If the current elevator is not the one sending the vote...
+			if elevator.ID != e.ID {
+				// Create a new channel for sending vote messages.
+				voteChannel := make(chan VoteMsg)
+				
+				// Start a new goroutine that transmits vote messages to the current elevator.
+				// The port number is calculated as the base port number plus the index of the elevator.
+				go bcast.Transmitter(basePort + i, voteChannel)
+				
+				// Send the vote message to the current elevator.
+				voteChannel <- voteMsg
+			}
+		}
+
+		// Log that the vote has been sent.
+		log.Printf("Sent vote: %d\n", vote)
+		
+		// Update the term in which the elevator last voted.
+		e.VotedInTerm = e.Term
+	}
 }
 
 // ReceiveVotes receives votes from other elevators.
 func (e *Elevator) ReceiveVotes() {
-	reader := bufio.NewReader(e.Conn)
+	// If this elevator did not start the election, return immediately.
+	if !e.IsElectionStarter {
+		return
+	}
+
+	// Create a new channel to receive Elevator objects.
+	voteChan := make(chan Elevator)
+	
+	// Start receiving Elevator objects on the specified port and send them to the voteChan.
+	bcast.Receiver(e.PORT, voteChan)
+
+	// Create a timer for the vote receiving process.
+	// After the specified duration, the timer will send a message on its channel.
+	voteTimeout := time.NewTimer(5 * time.Second) // adjust the duration as needed
+
+	// Start an infinite loop to continuously receive votes.
 	for {
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			log.Printf("Failed to read vote: %v", err)
-			return
-		}
-		fmt.Printf("Received message: %s\n", message) // add this line
-		if strings.HasPrefix(message, "VOTE:") {
-			vote, err := strconv.Atoi(strings.TrimPrefix(message, "VOTE:"))
-			if err != nil {
-				log.Printf("Failed to parse vote: %v", err)
-				return
-			}
-			// Only count votes that are for the current term.
-			if vote > e.Term {
-				e.Term = vote
+		select {
+		// When a vote is received on the voteChan...
+		case vote := <-voteChan:
+			// Process the vote.
+			fmt.Printf("Received vote for term %d\n", vote.Term)
+			if vote.Term > e.Term {
+				e.Term = vote.Term
 				e.Leader = false
-			} else if vote == e.Term {
+			} else if vote.Term == e.Term {
 				e.VotesReceived++
 			}
+		// When the timer expires...
+		case <-voteTimeout.C:
+			// Stop the vote receiving process and return.
+			fmt.Println("Vote receiving timed out")
+			return
 		}
 	}
 }
@@ -146,6 +193,7 @@ func (e *Elevator) CheckAcknowledgements() {
 			} else {
 				e.Leader = false
 			}
+			return // Add this line to exit the function after the timeout
 		}
 	}
 }
@@ -163,46 +211,87 @@ func (e *Elevator) AddElevator(addr string) {
 
 // Heartbeat sends a heartbeat message to all other elevators.
 func (e *Elevator) Heartbeat() {
+	heartbeatChannel := make(chan Elevator)
+
+	go bcast.Transmitter(12345, heartbeatChannel)
+
 	for _, elevator := range e.Elevators {
+		heartbeatChannel <- Elevator{ID: e.ID, Timestamp: time.Now().UnixNano()}
 		go elevator.ReceiveHeartbeat(e.Id)
 	}
 }
 
-// ReceiveHeartbeat receives a heartbeat message from another elevator.
-func (e *Elevator) ReceiveHeartbeat(id int) {
-	if id == e.LeaderID {
-		e.LastHeartbeat = time.Now()
+// ReceiveHeartbeat receives heartbeat messages on the given port
+func (e *Elevator) ReceiveHeartbeat(port int) {
+	heartbeatChannel := make(chan Elevator)
+
+	go bcast.Receiver(port, heartbeatChannel)
+
+	for {
+		select {
+		case hb := <-heartbeatChannel:
+			fmt.Printf("Received heartbeat from %s at %d\n", hb.ID, hb.Timestamp)
+		}
 	}
 }
 
+
+
 // CheckHeartbeat checks if a heartbeat has been received from the leader.
-func (e *Elevator) CheckHeartbeat() {
+func (e *Elevator) CheckHeartbeat(id string, peers_port int, broadcast_port int) {
+	peers_update_channel := make(chan peers.PeerUpdate)
+	go peers.Receiver(peers_port, peers_update_channel)
+
+	aliveCheck := make(chan structs.AliveMsg)
+	go bcast.Receiver(broadcast_port, aliveCheck)
+
 	for {
-		time.Sleep(100 * time.Millisecond)                // Check every 100 milliseconds
-		if time.Since(e.LastHeartbeat) > 30*time.Second { // Timeout after 30 seconds
-			fmt.Println("Leader failure detected. Starting new election.")
-			e.StartElection()
+		time.Sleep(100 * time.Millisecond) // Check every 100 milliseconds
+		select {
+		case p := <-peers_update_channel:
+			fmt.Printf("Peer update:\n")
+			fmt.Printf("  Peers:    %q\n", p.Peers)
+			fmt.Printf("  New:      %q\n", p.New)
+			fmt.Printf("  Lost:     %q\n", p.Lost)
+		case a := <-aliveCheck:
+			fmt.Printf("Received %#v \n", a)
+		default:
+			if time.Since(e.LastHeartbeat) > 30*time.Second { // Timeout after 30 seconds
+				fmt.Println("Leader failure detected. Starting new election.")
+				e.StartElection()
+			}
 		}
 	}
 }
 
 func (e *Elevator) StartElection() {
+	//TODO: Gi dem et fint hjem
+	//Ports for checking for life
+	broadcast_port := 33344
+	peers_port := 33224
+
+	e.IsElectionStarter = true
 	// Increment the term number when starting a new election.
     e.Term++
 
 	// Add a random delay before starting the election to reduce the chance of simultaneous broadcasts.
 	// The delay is a random duration between 0 and 1000 milliseconds.
 	delay := time.Duration(rand.Intn(1000)) * time.Millisecond
+
 	// Pause the execution of the current goroutine for the duration of the delay.
 	time.Sleep(delay)
+
 	// Broadcast the elevator's ID to all other elevators. FUNKER
 	e.BroadcastID()
+
 	// Send a vote for itself to all other elevators.
 	e.SendVote(e.Id)
 	fmt.Printf("Hei 4")
+
 	// Check for acknowledgements from other elevators. If no acknowledgements are received,this elevator declares itself as the leader.
 	e.CheckAcknowledgements()
 	fmt.Printf("Hei 5")
+
 	// Receive votes from other elevators. If a higher vote is received, this elevator is not the leader.
 	e.ReceiveVotes()
 	fmt.Printf("Hei 6")
@@ -211,36 +300,56 @@ func (e *Elevator) StartElection() {
 	if e.Leader {
 		fmt.Println("This elevator is the leader.")
 		// Start a new goroutine to check the leader's heartbeat.
-		go e.CheckHeartbeat()
+		go e.CheckHeartbeat(e.ID, peers_port, broadcast_port)
 	} else {
 		fmt.Println("This elevator is not the leader.")
 	}
 	fmt.Printf("Hei 6")
 }
 
-// SaveState saves the state of the elevator to a file.
+// SaveState saves the current state of the elevator to a JSON file.
+// The state includes the ID of the leader and the time of the last heartbeat.
 func (e *Elevator) SaveState() {
+	// Create a new state object with the current leader ID and last heartbeat time.
 	state := State{
 		LeaderID:      e.LeaderID,
 		LastHeartbeat: e.LastHeartbeat,
 	}
+
+	// Create a new file to save the state. The file name includes the ID of the elevator.
 	file, err := os.Create(fmt.Sprintf("elevator_%d_state.json", e.Id))
 	if err != nil {
+		// If there's an error creating the file, log the error and stop the program.
 		log.Fatal(err)
 	}
+
+	// Ensure the file gets closed once the function finishes.
 	defer file.Close()
+
+	// Encode the state object as JSON and save it to the file.
 	json.NewEncoder(file).Encode(state)
 }
 
-// LoadState loads the state of the elevator from a file.
+// LoadState loads the state of the elevator from a JSON file.
+// The state includes the ID of the leader and the time of the last heartbeat.
 func (e *Elevator) LoadState() {
+	// Open the file that contains the saved state. The file name includes the ID of the elevator.
 	file, err := os.Open(fmt.Sprintf("elevator_%d_state.json", e.Id))
 	if err != nil {
+		// If there's an error opening the file, log the error and stop the program.
 		log.Fatal(err)
 	}
+
+	// Ensure the file gets closed once the function finishes.
 	defer file.Close()
+
+	// Create a new state object to hold the loaded state.
 	state := State{}
+
+	// Decode the JSON from the file into the state object.
 	json.NewDecoder(file).Decode(&state)
+
+	// Update the elevator's state with the loaded state.
 	e.LeaderID = state.LeaderID
 	e.LastHeartbeat = state.LastHeartbeat
 }

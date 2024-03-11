@@ -16,11 +16,6 @@ type MasterSlave struct {
 	ELEVATOR_NUMBER int
 }
 
-type MasterSlave struct {
-	CURRENT_DATA *structs.SystemData
-	ELEVATOR_NUMBER int
-}
-
 func NewMasterSlave() *structs.SystemData {
     return &structs.SystemData{
         SENDER: 0,
@@ -39,7 +34,6 @@ func (ms *MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error
 	if order.TARGET_FLOOR < 0 || order.TARGET_FLOOR > structs.N_FLOORS {
 		return fmt.Errorf("Invalid order: floor must be between 0 and 3")
 	}
-	//TODO: update to be 0, 1 and 2
 	// Check if the direction in the order is valid (0 for stop, 1 for up, 2 for down)
 	if order.DIRECTION < 0 || order.DIRECTION > 2 {
 		return fmt.Errorf("Invalid order: direction must be 0, 1 or 2")
