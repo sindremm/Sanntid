@@ -51,9 +51,6 @@ func NewElevator(id int, conn net.Conn) *Elevator {
 //Map for the elevators
 var ElevatorMap = make(map[int]string)
 
-func UpdateElevatorMap(int, string){
-
-}
 
 //Encodes systemData to []byte to be sent by TCP
 func EncodeSystemData(s *SystemData) ([]byte, error){
