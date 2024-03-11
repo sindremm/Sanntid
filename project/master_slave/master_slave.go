@@ -7,7 +7,6 @@ import  (
 	//"strconv"
 	"time"
 	"encoding/gob"
-
 	"elevator/structs"
 )
 
@@ -16,10 +15,6 @@ type MasterSlave struct {
 	ELEVATOR_NUMBER int
 }
 
-type MasterSlave struct {
-	CURRENT_DATA *structs.SystemData
-	ELEVATOR_NUMBER int
-}
 
 func NewMasterSlave() *structs.SystemData {
     return &structs.SystemData{

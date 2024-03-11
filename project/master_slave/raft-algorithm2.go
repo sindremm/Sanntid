@@ -14,6 +14,7 @@ import (
 	"time"
 )
 
+//TODO: Find a more appropiate name for struct
 type Elevator struct {
 	Id              int
 	Leader          bool

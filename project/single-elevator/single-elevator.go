@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+//TODO: Remove unused code
 
 // Temporary placement of Mutex
 var order_mutex sync.Mutex
@@ -20,11 +21,6 @@ type Elevator struct {
 	current_floor *int
 	is_obstructed *bool
 	is_stopped    *bool
-
-	// Arrays that show awhich buttons have been pressed
-	up_button_array       *[4]bool
-	down_button_array     *[4]bool
-	internal_button_array *[4]bool
 
 	// Variable containing the current state
 	internal_state *structs.State
@@ -55,10 +51,6 @@ func MakeElevator() Elevator {
 	// Starting direction
 	starting_direction := structs.STILL
 
-	// Initialize empty button arrays
-	up_array := [structs.N_FLOORS]bool{}
-	down_array := [structs.N_FLOORS]bool{}
-	internal_array := [structs.N_FLOORS]bool{}
 
 	// Pointer values
 	floor_number := -1
@@ -72,9 +64,6 @@ func MakeElevator() Elevator {
 		&floor_number,
 		&is_obstructed,
 		&is_stopped,
-		&up_array,
-		&down_array,
-		&internal_array,
 		&start_state,
 		&starting_floor,
 		&target_floor,
@@ -133,7 +122,6 @@ func (e Elevator) Main() {
 			
 
 		case structs.MOVING:
-			// fmt.Printf("Moving\n")
 
 			// Run when arriving at new floor
 			if *e.current_floor != *e.at_floor {
@@ -143,7 +131,6 @@ func (e Elevator) Main() {
 			}
 
 		case structs.DOOR_OPEN:
-			// fmt.Printf("open door\n")
 			e.OpenDoor()
 
 		case structs.STOPPED:
@@ -158,11 +145,11 @@ func (e Elevator) ReadChannels(button_order chan elevio.ButtonEvent, current_flo
 
 	for {
 		select {
-		case bo := <-button_order:
+		// case bo := <-button_order:
 			// Transform order to readable format
-			floor, btn := e.ReadOrder(bo)
+			// floor, btn := e.ReadOrder(bo)
 			// Add order to internal array and set lights
-			e.AddOrders(floor, btn)
+			// e.AddOrders(floor, btn)
 
 		case cf := <-current_floor:
 			*e.current_floor = cf
@@ -182,9 +169,12 @@ func (e Elevator) ReadChannels(button_order chan elevio.ButtonEvent, current_flo
 
 // Clears orders when they appear at the same floor as the elevator
 func (e Elevator) ClearOrdersAtFloor() {
-	// Check if any of the orders are for the current floor
-	if e.internal_button_array[*e.at_floor] || e.up_button_array[*e.at_floor] || e.down_button_array[*e.at_floor] {
-		// fmt.Printf("ClearOrdersAtFloor\n")
+	// // Check if any of the orders are for the current floor
+	// if e.internal_button_array[*e.at_floor] || e.up_button_array[*e.at_floor] || e.down_button_array[*e.at_floor] {
+	// 	// fmt.Printf("ClearOrdersAtFloor\n")
+
+
+	//TODO: Handle Clear orders at floor
 		
 		// Open door
 		e.TransitionToOpenDoor()
@@ -193,16 +183,16 @@ func (e Elevator) ClearOrdersAtFloor() {
 			*e.target_floor = -1;
 		}
 
-		// Remove all orders on floor
-		e.internal_button_array[*e.at_floor] = false
-		e.up_button_array[*e.at_floor] = false
-		e.down_button_array[*e.at_floor] = false
+		// // Remove all orders on floor
+		// e.internal_button_array[*e.at_floor] = false
+		// e.up_button_array[*e.at_floor] = false
+		// e.down_button_array[*e.at_floor] = false
 
 		// Reset all lights
 		elevio.SetButtonLamp(0, *e.at_floor, false)
 		elevio.SetButtonLamp(1, *e.at_floor, false)
 		elevio.SetButtonLamp(2, *e.at_floor, false)
-	}
+	// }
 
 }
 
@@ -214,6 +204,8 @@ func (e Elevator) PickTarget() {
 
 	// This code can be reworked to better adhere to the DRY-principle
 	// Check floors above
+	targets := e.CURRENT_DATA.ELEVATOR_TARGETS[e.ELEVATOR_NUMBER]
+
 
 	for i := 1; i <= 3; i++{
 		if *e.at_floor+i < 4 {
@@ -226,7 +218,7 @@ func (e Elevator) PickTarget() {
 			}
 
 			// Set target if an order exists on floor
-			if e.up_button_array[check_floor] || e.down_button_array[check_floor] || e.internal_button_array[check_floor] {
+			if targets[check_floor][0] | targets[check_floor][1] {
 				new_target = check_floor
 				break
 			}
@@ -241,7 +233,7 @@ func (e Elevator) PickTarget() {
 			}
 
 			// Set target if an order exists on floor
-			if e.up_button_array[check_floor] || e.down_button_array[check_floor] || e.internal_button_array[check_floor] {
+			if targets[check_floor][0] | targets[check_floor][1] {
 				new_target = check_floor
 				break
 			}
@@ -249,21 +241,20 @@ func (e Elevator) PickTarget() {
 	}
 
 	*e.target_floor = new_target
-	
 }
 
-func (e Elevator) AddOrders(floor int, button elevio.ButtonType) {
-	// Set elevator lights
-	elevio.SetButtonLamp(button, floor, true)
-	switch button {
-	case 0:
-		e.up_button_array[floor] = true
-	case 1:
-		e.down_button_array[floor] = true
-	case 2:
-		e.internal_button_array[floor] = true
-	}
-}
+// func (e Elevator) AddOrders(floor int, button elevio.ButtonType) {
+// 	// Set elevator lights
+// 	elevio.SetButtonLamp(button, floor, true)
+// 	switch button {
+// 	case 0:
+// 		e.up_button_array[floor] = true
+// 	case 1:
+// 		e.down_button_array[floor] = true
+// 	case 2:
+// 		e.internal_button_array[floor] = true
+// 	}
+// }
 
 
 // Convert order to readable format
@@ -284,47 +275,15 @@ func (e Elevator) Visit_floor() {
 
 	*e.at_floor = *e.current_floor
 
-	// Remove internal order when opening door at requested floor, and opens door
-	if e.internal_button_array[*e.at_floor] {
-		// Remove order
-		e.internal_button_array[*e.at_floor] = false
-		elevio.SetButtonLamp(2, *e.at_floor, false)	
-
-		
-		// Open door
-		e.TransitionToOpenDoor()
-	}
-
-	// Remove orders in same direction, and sets door to open
-	switch *e.moving_direction {
-	case structs.UP:
-		if e.up_button_array[*e.at_floor] {
-			e.up_button_array[*e.at_floor] = false
-			elevio.SetButtonLamp(0, *e.at_floor, false)
-			
-			
-			// Open door
-			e.TransitionToOpenDoor()
-		}
-	case structs.DOWN:
-		if e.down_button_array[*e.at_floor] {
-			e.down_button_array[*e.at_floor] = false
-			elevio.SetButtonLamp(1, *e.at_floor, false)
-			
-			
-			// Open door
-			e.TransitionToOpenDoor()
-		}
-	}
-	// Reset internal button
-	elevio.SetButtonLamp(2, *e.at_floor, false)
-
 	if *e.at_floor == *e.target_floor {
-		e.TransitionToOpenDoor()
+		// Reset internal button
+		elevio.SetButtonLamp(2, *e.at_floor, false)
 
-		e.internal_button_array[*e.at_floor] = false
-		e.up_button_array[*e.at_floor] = false
-		e.down_button_array[*e.at_floor] = false
+		// Make sure the correct orders are removed
+		e.RemoveOrdersAtFloor(*e.at_floor, *e.moving_direction)
+
+		// Transition to OpenDoor state
+		e.TransitionToOpenDoor()
 
 
 		// TODO: Figure out logic when several buttons are pressed at target
@@ -392,6 +351,9 @@ func (e Elevator) Stop() {
 		// fmt.Print(e.internal_state)
 	}
 }
+func (e Elevator) RemoveOrdersAtFloor(floor int, direction structs.Direction) {
+	//TODO: Fill in function. May have to be placed in Master-Slave or elsewhere
+}
 
 // Reset all elevator elements
 func ResetElevator() {
@@ -411,3 +373,5 @@ func ResetElevator() {
 		}
 	}
 }
+
+

@@ -116,21 +116,21 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][][2]
 
 	// Decode the new orders
 	output := new(map[string][][2]bool)
+	// ERR: 
 	json.Unmarshal([]byte(stdout), &output)
 
 	return output
 }
 
 
-
 func main() {
-
+	//TODO: use a map to correspond states to elevator so it is not mixed up if some elevators are offline
 	states := []structs.ElevatorState{
 		{
 			ACTIVE:         true,
-			CURRENT_FLOOR:  3,
+			CURRENT_FLOOR:  2,
 			TARGET_FLOOR:   2,
-			DIRECTION:      structs.DOWN,
+			DIRECTION:      structs.UP,
 			INTERNAL_STATE: 1,
 		},
 		{
@@ -140,13 +140,13 @@ func main() {
 			DIRECTION:      structs.UP,
 			INTERNAL_STATE: 0,
 		},
-		{
-			ACTIVE:         true,
-			CURRENT_FLOOR:  0,
-			TARGET_FLOOR:   2,
-			DIRECTION:      structs.STILL,
-			INTERNAL_STATE: 1,
-		},
+		// {
+		// 	ACTIVE:         true,
+		// 	CURRENT_FLOOR:  0,
+		// 	TARGET_FLOOR:   2,
+		// 	DIRECTION:      structs.STILL,
+		// 	INTERNAL_STATE: 1,
+		// },
 	}
 
 	data := structs.SystemData{
@@ -154,9 +154,9 @@ func main() {
 		UP_BUTTON_ARRAY:   &([structs.N_FLOORS]bool{false, true, false, false}),
 		DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{false, false, false, true}),
 		INTERNAL_BUTTON_ARRAY: &([structs.N_ELEVATORS][structs.N_FLOORS]bool{
-			{false, false, true, true},
-			{false, false, false, false},
-			{false, false, true, true},
+			[structs.N_FLOORS]bool{false, false, false, true},
+			[structs.N_FLOORS]bool{false, false, false, false},
+			[structs.N_FLOORS]bool{false, false, true, false},
 		}),
 		WORKING_ELEVATORS: &([structs.N_FLOORS]bool{false, false, true, true}),
 		ELEVATOR_STATES:   &(states),

@@ -12,7 +12,7 @@ const N_ELEVATORS int = 3;
 
 // ##################### Master Slave ##################
 
-// Layout of the system data
+// Datastruct containing all the information of the system
 type SystemData struct{
 	// The elevator sending the message (who is also master)
 	SENDER int
@@ -28,9 +28,11 @@ type SystemData struct{
 	// POSITION AND TARGET OF EACH ELEVATOR
 	ELEVATOR_STATES	   *[]ElevatorState
 
+	// TARGETS OF EACH ELEVATOR
+	ELEVATOR_TARGETS *[N_ELEVATORS][2]bool
+
 	// COUNTER FOR MESSAGE SYNCHRONIZATION 
 	COUNTER int
-
 }
 
 
@@ -38,7 +40,6 @@ type ElevatorState struct{
 	ACTIVE bool
 	INTERNAL_STATE int // State machine state of elevator
 	CURRENT_FLOOR int
-	TARGET_FLOOR int
 	//TODO: update usage of direction
 	DIRECTION Direction // 0 for stop, 1 for up, 2 for down
 }
