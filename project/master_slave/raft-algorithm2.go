@@ -48,6 +48,29 @@ func NewElevator(id int, conn net.Conn) *Elevator {
 	}
 }
 
+//Map for the elevators
+var elevator_map = make(map[int]string)
+
+//Encodes systemData to []byte to be sent by TCP
+func EncodeSystemData(s *SystemData) ([]byte, error){
+	b, err = json.Marshal(s)
+	if err!= nil {
+		fmt.Print("Error with Marshal \n")
+	}
+	return b
+}
+
+//Decodes SystemData 
+func DecodeSystemData(data []byte, v any) error{
+	var systemData SystemData
+
+	err := json.Unmarshal([]byte(data), &systemData)
+	if err != nil {
+        log.Fatalf("Error with decoding:  %s", err)
+    }
+	return err
+}
+
 // BroadcastID sends the ID of the current elevator to all other elevators.
 func (e *Elevator) BroadcastID() {
 	// Create a WaitGroup to wait for all goroutines to finish.
