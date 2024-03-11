@@ -30,11 +30,11 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 	new_argument.HallRequests = requests
 
 	// Assemble states
-	direction_string := [3]string{"stop", "up", "down"}
-	new_states := make(map[string]singleState)
+	direction_string := [3]string{"up", "down", "stop"}
+	new_states := make(map[string]singleElevatorState)
 	for i := 0; i < len(*systemData.ELEVATOR_STATES); i++ {
 
-		new_state := singleState{}
+		new_state := singleElevatorState{}
 
 		state := (*systemData.ELEVATOR_STATES)[i]
 
@@ -77,24 +77,17 @@ func state_to_behaviour(state structs.ElevatorState) string {
 }
 
 // Structure containing the data for each elevator
-type singleState struct {
+type singleElevatorState struct {
 	Behaviour   string  `json:"behaviour"`
 	Floor       int     `json:"floor"`
 	Direction   string  `json:"direction"`
 	CabRequests [4]bool `json:"cabRequests"`
 }
 
-// Struct containing the elevators
-// type states struct {
-// 	One   singleState `json:"one"`
-// 	Two   singleState `json:"two"`
-// 	Three singleState `json:"Three"`
-// }
-
 // Structure for the full message
 type MessageStruct struct {
 	HallRequests [4][2]bool             `json:"hallRequests"`
-	States       map[string]singleState `json:"states"`
+	States       map[string]singleElevatorState `json:"states"`
 }
 
 // Return the movements of the elevator
@@ -128,28 +121,30 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][][2]
 	return output
 }
 
+
+
 func main() {
 
 	states := []structs.ElevatorState{
 		{
 			ACTIVE:         true,
-			CURRENT_FLOOR:  2,
+			CURRENT_FLOOR:  3,
 			TARGET_FLOOR:   2,
-			DIRECTION:      1,
+			DIRECTION:      structs.DOWN,
 			INTERNAL_STATE: 1,
 		},
 		{
 			ACTIVE:         true,
 			CURRENT_FLOOR:  0,
 			TARGET_FLOOR:   2,
-			DIRECTION:      0,
+			DIRECTION:      structs.UP,
 			INTERNAL_STATE: 0,
 		},
 		{
 			ACTIVE:         true,
 			CURRENT_FLOOR:  0,
 			TARGET_FLOOR:   2,
-			DIRECTION:      0,
+			DIRECTION:      structs.STILL,
 			INTERNAL_STATE: 1,
 		},
 	}
