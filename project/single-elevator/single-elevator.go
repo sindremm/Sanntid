@@ -36,7 +36,10 @@ type Elevator struct {
 
 	// Variable for keeping track of when interrupt ends
 	interrupt_end *time.Time
+
+	MasterSlave
 }
+
 
 func MakeElevator() Elevator {
 	// Set state to idle
