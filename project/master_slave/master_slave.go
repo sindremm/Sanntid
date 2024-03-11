@@ -7,13 +7,31 @@ import  (
 	//"strconv"
 	"time"
 	"encoding/gob"
-
 	"elevator/structs"
+	scheduler "elevator/elevator-scheduler"
 )
 
 type MasterSlave struct {
 	CURRENT_DATA *structs.SystemData
 	ELEVATOR_NUMBER int
+}
+
+func (ms *MasterSlave) UpdateElevatorTargets() {
+	
+	// Get new elevator targets
+	movement_map := scheduler.CalculateElevatorMovement(ms.CURRENT_DATA)
+
+	// Map to convert from map of elevators to array of elevators
+	key_to_int_map := map[string]int{
+		"one": 1,
+	 	"two": 2, 
+		"three": 3,
+	}
+	
+	// Update values in ELEVATOR_TARGETS
+	for k, v := range movement_map {
+		*ms.CURRENT_DATA.ELEVATOR_TARGETS[key_to_int_map[k]] = v;
+	}
 }
 
 
@@ -153,6 +171,10 @@ func receiveSystemData(conn net.Conn, data *structs.SystemData) error {
 	}
 	// If no error occurred, return nil
 	return nil
+}
+
+func (ms *MasterSlave) CheckIfReceivedNewTargets() {
+	ms.CURRENT_DATA.COUNTER
 }
 
 

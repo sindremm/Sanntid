@@ -18,6 +18,7 @@ import (
 )
 //TODO: endre navnet fra raft-agortihm2 til election_algorithm
 
+//TODO: Find a more appropiate name for struct
 type Elevator struct {
 	Id              int
 	Leader          bool
@@ -67,25 +68,7 @@ func NewElevator(id int, conn net.Conn) *Elevator {
 var ElevatorMap = make(map[int]string)
 
 
-//Encodes systemData to []byte to be sent by TCP
-func EncodeSystemData(s *SystemData) ([]byte, error){
-	b, err = json.Marshal(s)
-	if err!= nil {
-		fmt.Print("Error with Marshal \n")
-	}
-	return b
-}
 
-//Decodes SystemData 
-func DecodeSystemData(data []byte, v any) structs.SystemData{
-	var systemData SystemData
-
-	err := json.Unmarshal([]byte(data), &systemData)
-	if err != nil {
-        log.Fatalf("Error with decoding:  %s", err)
-    }
-	return systemData
-}
 
 // BroadcastID sends the ID of the current elevator to all other elevators.
 func (e *Elevator) BroadcastID() {
@@ -120,6 +103,7 @@ func (e *Elevator) ReceiveBroadcast(id int) {
 		e.Acknowledgement <- true
 	}
 }
+
 
 // SendVote sends a vote to all other elevators.
 func (e *Elevator) SendVote(vote int) {
