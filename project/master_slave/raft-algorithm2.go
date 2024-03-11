@@ -77,7 +77,7 @@ func EncodeSystemData(s *SystemData) ([]byte, error){
 }
 
 //Decodes SystemData 
-func DecodeSystemData(data []byte, v any) SystemData{
+func DecodeSystemData(data []byte, v any) structs.SystemData{
 	var systemData SystemData
 
 	err := json.Unmarshal([]byte(data), &systemData)

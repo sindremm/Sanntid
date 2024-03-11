@@ -16,14 +16,6 @@ type MasterSlave struct {
 	ELEVATOR_NUMBER int
 }
 
-//ELEVATOR_TARGETS *[N_El[N_FLOORS][2]bool
-
-func (ms *MasterSlave) UpdateElevatorTargets() {
-	map[string][][2]bool = CalculateElevatorMovement(ms.CURRENT_DATA)
-
-
-}
-
 
 func NewMasterSlave() *structs.SystemData {
     return &structs.SystemData{
