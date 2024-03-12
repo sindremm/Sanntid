@@ -7,14 +7,15 @@ import (
 	"Driver-go/elevio"
 	"time"
 	singleelev "elevator/single-elevator"
+	master "elevator/master-slave"
+	"elevator/structs"
 )
 
 
 
 func main() {
-	var numFloors int = 4
 
-	elevio.Init("localhost:15657", numFloors)
+	elevio.Init("localhost:15657", structs.N_FLOORS)
 
 	singleelev.ResetElevator()
 
@@ -29,12 +30,19 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 
-	// Create elevator and start main loop
-	main_elevator := singleelev.MakeElevator()
+	
 
-	// Start threads
-	go main_elevator.ReadChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
-	go main_elevator.Main()
+	// Create elevator and start main loop
+	elevator := singleelev.MakeElevator()
+
+	// Create master slave
+	master_slave := master.MakeMasterSlave(1, elevator)
+
+	// Start reading elevator channels
+	go elevator.ReadChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
+
+	// Start master main loop
+	go master_slave.MainLoop()
 
 	// Prevent the program from terminating
 	for { 
