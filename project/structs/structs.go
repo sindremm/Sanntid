@@ -47,7 +47,7 @@ type ElevatorState struct{
 const (
 	SERVER_IP_ADDRESS = "127.0.0.1"
 	PORT = "20005"
-	FILENAME = "home/student/Documents/AjananMiaSindre/Sanntid/project/driver-go/master_slave/master_slave.go"
+	FILENAME = "home/student/Documents/AjananMiaSindre/Sanntid/project/driver-go/master-slave/master-slave.go"
 )
 
 

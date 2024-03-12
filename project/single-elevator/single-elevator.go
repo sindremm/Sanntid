@@ -36,12 +36,10 @@ type Elevator struct {
 
 	// Variable for keeping track of when interrupt ends
 	interrupt_end *time.Time
-
-	MasterSlave
 }
 
 
-func MakeElevator() Elevator {
+func MakeElevator(elevatorNumber int) Elevator {
 	// Set state to idle
 	var start_state structs.State = structs.IDLE
 
@@ -72,7 +70,6 @@ func MakeElevator() Elevator {
 		&target_floor,
 		&starting_direction,
 		&start_time}
-
 }
 
 func (e Elevator) Main() {
@@ -144,16 +141,10 @@ func (e Elevator) Main() {
 }
 
 // Read from the channels and put data into variables
-func (e Elevator) ReadChannels(button_order chan elevio.ButtonEvent, current_floor chan int, is_obstructed chan bool, is_stopped chan bool) {
+func (e Elevator) ReadChannels(current_floor chan int, is_obstructed chan bool, is_stopped chan bool) {
 
 	for {
 		select {
-		// case bo := <-button_order:
-			// Transform order to readable format
-			// floor, btn := e.ReadOrder(bo)
-			// Add order to internal array and set lights
-			// e.AddOrders(floor, btn)
-
 		case cf := <-current_floor:
 			*e.current_floor = cf
 			// fmt.Printf("\n From channel: %t \n", cf)
@@ -199,7 +190,7 @@ func (e Elevator) ClearOrdersAtFloor() {
 
 }
 
-func (e Elevator) PickTarget() {
+func (e Elevator) PickTarget(calls [structs.N_FLOORS][2]bool) {
 	// Sets new target to closest floor, prioritizing floors above
 	new_target := -1
 
@@ -207,7 +198,6 @@ func (e Elevator) PickTarget() {
 
 	// This code can be reworked to better adhere to the DRY-principle
 	// Check floors above
-	targets := e.CURRENT_DATA.ELEVATOR_TARGETS[e.ELEVATOR_NUMBER]
 
 
 	for i := 1; i <= 3; i++{
@@ -221,7 +211,7 @@ func (e Elevator) PickTarget() {
 			}
 
 			// Set target if an order exists on floor
-			if targets[check_floor][0] | targets[check_floor][1] {
+			if calls[check_floor][0] | calls[check_floor][1] {
 				new_target = check_floor
 				break
 			}
@@ -236,7 +226,7 @@ func (e Elevator) PickTarget() {
 			}
 
 			// Set target if an order exists on floor
-			if targets[check_floor][0] | targets[check_floor][1] {
+			if calls[check_floor][0] | calls[check_floor][1] {
 				new_target = check_floor
 				break
 			}
@@ -246,27 +236,9 @@ func (e Elevator) PickTarget() {
 	*e.target_floor = new_target
 }
 
-// func (e Elevator) AddOrders(floor int, button elevio.ButtonType) {
-// 	// Set elevator lights
-// 	elevio.SetButtonLamp(button, floor, true)
-// 	switch button {
-// 	case 0:
-// 		e.up_button_array[floor] = true
-// 	case 1:
-// 		e.down_button_array[floor] = true
-// 	case 2:
-// 		e.internal_button_array[floor] = true
-// 	}
-// }
 
 
-// Convert order to readable format
-func (e Elevator) ReadOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType) {
-	order_floor := button_order.Floor
-	order_button := button_order.Button
 
-	return order_floor, order_button
-}
 
 func (e Elevator) Visit_floor() {
 

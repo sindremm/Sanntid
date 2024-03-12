@@ -1,4 +1,4 @@
-package master_slave
+package election_algorithm
 
 import (
 	//"bufio"

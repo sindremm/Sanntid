@@ -5,20 +5,25 @@ import  (
 	"net"
 	"os/exec"
 	//"strconv"
+
+	"driver-go/elevio"
+
 	"time"
 	"elevator/structs"
 	"elevator/network"
 	scheduler "elevator/elevator-scheduler"
+	single "elevator/single-elevator"
 )
 
 type MasterSlave struct {
 	CURRENT_DATA *structs.SystemData
 	IP_ADDRESS string
 	ELEVATOR_NUMBER int
+	ELEVATOR_UNIT single.Elevator
 }
 
 // Create a MasterSlave
-func CreateMasterSlave(ElevatorNumber int) *MasterSlave {
+func MakeMasterSlave(elevatorNumber int, elevator single.Elevator) *MasterSlave {
 	MS := new(MasterSlave)
 	
 	// Initialize current data
@@ -32,7 +37,11 @@ func CreateMasterSlave(ElevatorNumber int) *MasterSlave {
         COUNTER: 0,
     }
 	// Set elevator number
-	MS.ELEVATOR_NUMBER = ElevatorNumber
+	MS.ELEVATOR_NUMBER = elevatorNumber
+	MS.ELEVATOR_UNIT = elevator
+
+	// Start threads
+	go elevator.Main()
 
 	return MS
 }
@@ -51,7 +60,7 @@ func (ms *MasterSlave) MainLoop() {
 			// TODO: Update SystemData:
 			// Update calls, buttons
 			// Update the states of each elevator
-			// UpdateElevatorTargets()
+			// UpdateElevatorTargets() (Only run when new calls, or update in state of elevator)
 			// Increase counter
 
 
@@ -70,12 +79,49 @@ func (ms *MasterSlave) MainLoop() {
 				ms.CURRENT_DATA = received_data
 			}
 
-
+			calls := ms.CURRENT_DATA.ELEVATOR_TARGETS[ms.ELEVATOR_NUMBER]
+			ms.ELEVATOR_UNIT.PickTarget(calls)
 			
 		}
 	}
 
 }
+
+// Read from the channels and put data into variables
+func (ms *MasterSlave) ReadButtons(button_order chan elevio.ButtonEvent) {
+
+	for {
+		select {
+		case bo := <-button_order:
+			// Transform order to readable format
+			floor, btn := ms.InterpretOrder(bo)
+			// Add order to internal array and set lights
+			ms.AddOrderToSystemDAta(floor, btn)
+			elevio.SetButtonLamp(btn, floor, true)
+		}
+	}
+}
+
+// Convert order to readable format
+func (ms *MasterSlave) InterpretOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType) {
+	order_floor := button_order.Floor
+	order_button := button_order.Button
+
+	return order_floor, order_button
+}
+
+// Add order to system data
+func (ms *MasterSlave) AddOrderToSystemDAta(floor int, button elevio.ButtonType) {
+	switch button {
+	case 0:
+		ms.CURRENT_DATA.up_button_array[floor] = true
+	case 1:
+		ms.CURRENT_DATA.down_button_array[floor] = true
+	case 2:
+		ms.CURRENT_DATA.internal_button_array[floor] = true
+	}
+}
+
 
 func (ms *MasterSlave) UpdateElevatorTargets() {
 	// Get new elevator targets
