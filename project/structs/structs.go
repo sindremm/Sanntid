@@ -22,7 +22,7 @@ type SystemData struct{
 	DOWN_BUTTON_ARRAY     *[N_FLOORS]bool
 	
 	// POSITION AND TARGET OF EACH ELEVATOR
-	ELEVATOR_DATA	   *[N_ELEVATORS]ElevatorData
+	ELEVATOR_DATA	   *[]ElevatorData
 	
 	// COUNTER FOR MESSAGE SYNCHRONIZATION 
 	COUNTER int
@@ -36,9 +36,9 @@ type ElevatorData struct{
 	ADDRESS string
 
 	// All active cab buttons
-	INTERNAL_BUTTON_ARRAY *[N_FLOORS]bool
+	INTERNAL_BUTTON_ARRAY [N_FLOORS]bool
 	// TARGETS OF EACH ELEVATOR
-	ELEVATOR_TARGETS *[N_FLOORS][2]bool
+	ELEVATOR_TARGETS [N_FLOORS][2]bool
 	// State machine state of elevator
 	INTERNAL_STATE int 
 	// The last floor the elevator visited
