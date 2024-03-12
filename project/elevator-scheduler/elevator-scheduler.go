@@ -32,16 +32,16 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 	// Assemble states
 	direction_string := [3]string{"up", "down", "stop"}
 	new_states := make(map[string]singleElevatorState)
-	for i := 0; i < len(*systemData.ELEVATOR_STATES); i++ {
+	for i := 0; i < len(*systemData.ELEVATOR_DATA); i++ {
 
 		new_state := singleElevatorState{}
 
-		state := (*systemData.ELEVATOR_STATES)[i]
+		state := (*systemData.ELEVATOR_DATA)[i]
 
 		new_state.Behaviour = state_to_behaviour(state)
 		new_state.Floor = state.CURRENT_FLOOR
 		new_state.Direction = direction_string[state.DIRECTION]
-		new_state.CabRequests = systemData.INTERNAL_BUTTON_ARRAY[i]
+		new_state.CabRequests = (*systemData.ELEVATOR_DATA)[i].INTERNAL_BUTTON_ARRAY
 
 		// Set the values for the corresponding elevator
 		if i == 0 {
@@ -60,7 +60,7 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 }
 
 // Translate the elevators state to the corresponding string value
-func state_to_behaviour(state structs.ElevatorState) string {
+func state_to_behaviour(state structs.ElevatorData) string {
 	// TODO: Find correct corresponding states
 	if state.INTERNAL_STATE == 0 {
 		return "idle"
@@ -125,19 +125,31 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][][2]
 
 func main() {
 	//TODO: use a map to correspond states to elevator so it is not mixed up if some elevators are offline
-	states := []structs.ElevatorState{
+	states := []structs.ElevatorData{
 		{
-			ACTIVE:         true,
+			ALIVE:         true,
 			CURRENT_FLOOR:  2,
-			TARGET_FLOOR:   2,
+			ELEVATOR_TARGETS:   [structs.N_FLOORS][2]bool{
+				[2]bool{false, true}, 
+				[2]bool{false, false}, 
+				[2]bool{false, false},
+				[2]bool{false, false},
+			},
 			DIRECTION:      structs.UP,
+			INTERNAL_BUTTON_ARRAY: [structs.N_FLOORS]bool{false, false, false, true},
 			INTERNAL_STATE: 1,
 		},
 		{
-			ACTIVE:         true,
+			ALIVE:         true,
 			CURRENT_FLOOR:  0,
-			TARGET_FLOOR:   2,
+			ELEVATOR_TARGETS:   [structs.N_FLOORS][2]bool{
+				[2]bool{false, false}, 
+				[2]bool{false, false}, 
+				[2]bool{true, false},
+				[2]bool{false, false},
+			},
 			DIRECTION:      structs.UP,
+			INTERNAL_BUTTON_ARRAY: [structs.N_FLOORS]bool{false, false, false, true},
 			INTERNAL_STATE: 0,
 		},
 		// {
@@ -150,16 +162,10 @@ func main() {
 	}
 
 	data := structs.SystemData{
-		SENDER:            0,
+		MASTER_ID:            0,
 		UP_BUTTON_ARRAY:   &([structs.N_FLOORS]bool{false, true, false, false}),
 		DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{false, false, false, true}),
-		INTERNAL_BUTTON_ARRAY: &([structs.N_ELEVATORS][structs.N_FLOORS]bool{
-			[structs.N_FLOORS]bool{false, false, false, true},
-			[structs.N_FLOORS]bool{false, false, false, false},
-			[structs.N_FLOORS]bool{false, false, true, false},
-		}),
-		WORKING_ELEVATORS: &([structs.N_FLOORS]bool{false, false, true, true}),
-		ELEVATOR_STATES:   &(states),
+		ELEVATOR_DATA:   &(states),
 		COUNTER:           0,
 	}
 
