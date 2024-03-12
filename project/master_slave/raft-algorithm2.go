@@ -64,11 +64,6 @@ func NewElevator(id int, conn net.Conn) *Elevator {
 	}
 }
 
-//Map for the elevators
-var ElevatorMap = make(map[int]string)
-
-
-
 
 // BroadcastID sends the ID of the current elevator to all other elevators.
 func (e *Elevator) BroadcastID() {

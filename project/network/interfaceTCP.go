@@ -23,7 +23,11 @@ import (
 
 // var slave_address = slave_IP + ":" + slave_port
 
-// Comment out sections: ctrl, k c
+//Map for the elevators
+var ElevatorMap = make(map[int]string)
+
+
+
 func main() {
 
 	//Gets local IP
@@ -127,8 +131,9 @@ func DecodeSystemData(data []byte) structs.SystemData{
 
 
 // Asks slave_address to connect, then sends a message to slave_address, then reads from slave
-func SendSystemData(localIP string, slave_address string, TCPmessage structs.SystemData) (){
+func SendSystemData(localIP string, slave_id int, TCPmessage *structs.SystemData) (){
 
+	slave_address = ElevatorMap[slave_id]
 	// Dials slave to establish connection
 	conn, err := net.DialTimeout("tcp", slave_address, structs.TCP_timeout)
 	if err != nil {
@@ -155,7 +160,10 @@ func SendSystemData(localIP string, slave_address string, TCPmessage structs.Sys
 		if err != nil {
 			fmt.Printf("Failed to read message %v\n", err)
 		}
-		fmt.Printf("Message: %v\n", string(buffer[:n]))
+		slaveSystemData = DecodeSystemData(buffer[:n])
+		*ELEVATOR_STATES[slave_id] = slaveSystemData.ELEVATOR_STATES[slave_id]
+		*INTERNAL_BUTTON_ARRAY[slave_id] = slaveSystemData.INTERNAL_BUTTON_ARRAY[slave_id]
+		//TODO: Update the relevant up and down arrays
 	}
 }
 
@@ -163,7 +171,7 @@ func SendSystemData(localIP string, slave_address string, TCPmessage structs.Sys
 
 
 // Listens and accepts connection on our_port, then sends a message back
-func ReceiveSystemData(listen_port string) (structs.SystemData) {
+func ReceiveSystemData(listen_port string, slaveMessage structs.SystemData) (structs.SystemData) {
 	// Find local IP of computer
 	localIP, err := localip.LocalIP()
 	if err != nil {
@@ -193,8 +201,19 @@ func ReceiveSystemData(listen_port string) (structs.SystemData) {
 		if err != nil {
 			fmt.Printf("Failed to read message %v\n", err)
 		}
-
+		SlaveSendBtnInfo(conn, slaveMessage)
 		// Return received data
 		return DecodeSystemData(buffer[:n])
+	}
+}
+
+func SlaveSendBtnInfo(conn net.Conn, slaveMessage *structs.SystemData) {
+	//Encode systemdata and add zero termination
+	msg := append(EncodeSystemData(&slaveMessage), "\000"...)
+	_, err = conn.Write(msg)
+	if err != nil {
+		fmt.Printf("Failed to send message %v\n", err)
+		return
+		//TODO: fix this err, returns infinitely many "Message: Failed to read message EOF"
 	}
 }
