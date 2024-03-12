@@ -15,6 +15,7 @@ import (
 	"elevator/network/bcast"
 	"elevator/network/peers"
 	"elevator/structs"
+	"elevator/network/"
 )
 //TODO: endre navnet fra raft-agortihm2 til election_algorithm
 
@@ -256,6 +257,10 @@ func (e *Elevator) CheckHeartbeat(id string, peers_port int, broadcast_port int)
 			fmt.Printf("  Peers:    %q\n", p.Peers)
 			fmt.Printf("  New:      %q\n", p.New)
 			fmt.Printf("  Lost:     %q\n", p.Lost)
+			//Updates the ElevatorMap each time a new peer appears
+			if p.New != nil{
+				UpdateElevatorMap(p.New)
+			}
 		case a := <-aliveCheck:
 			fmt.Printf("Received %#v \n", a)
 		default:
@@ -266,6 +271,7 @@ func (e *Elevator) CheckHeartbeat(id string, peers_port int, broadcast_port int)
 		}
 	}
 }
+
 
 func (e *Elevator) StartElection() {
 	//TODO: Gi dem et fint hjem

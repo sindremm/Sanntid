@@ -23,9 +23,6 @@ import (
 
 // var slave_address = slave_IP + ":" + slave_port
 
-//Map for the elevators
-var ElevatorMap = make(map[int]string)
-
 
 
 func main() {
@@ -216,4 +213,13 @@ func SlaveSendBtnInfo(conn net.Conn, slaveMessage *structs.SystemData) {
 		return
 		//TODO: fix this err, returns infinitely many "Message: Failed to read message EOF"
 	}
+}
+
+//Adds new address and id number to the ElevatorMap
+func UpdateElevatorMap(newElevatorID string) {
+
+	splitString := strings.Split(newElevatorID, ":")
+	elevatorNum = splitString[0]
+	elevatorAddress = splitString[1]
+	ElevatorMap[elevatorNum] = elevatorAddress
 }
