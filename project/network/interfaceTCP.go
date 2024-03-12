@@ -198,8 +198,8 @@ func SlaveSendInfoToMaster(master_address string, slave_message *structs.SystemD
 //Adds new address and id number to the ElevatorMap
 func UpdateElevatorMap(newElevatorID string) {
 
-	splitString := strings.Split(newElevatorID, ":")
+	splitString := strings.Split(newElevatorID, "-")
 	elevatorNum = splitString[0]
 	elevatorAddress = splitString[1]
-	ElevatorMap[elevatorNum] = elevatorAddress
+	*SystemData.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
 }
