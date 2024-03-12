@@ -6,18 +6,78 @@ import  (
 	"os/exec"
 	//"strconv"
 	"time"
-	"encoding/gob"
 	"elevator/structs"
+	"elevator/network"
 	scheduler "elevator/elevator-scheduler"
 )
 
 type MasterSlave struct {
 	CURRENT_DATA *structs.SystemData
+	IP_ADDRESS string
 	ELEVATOR_NUMBER int
 }
 
-func (ms *MasterSlave) UpdateElevatorTargets() {
+// Create a MasterSlave
+func CreateMasterSlave(ElevatorNumber int) *MasterSlave {
+	MS := new(MasterSlave)
 	
+	// Initialize current data
+	MS.CURRENT_DATA = structs.SystemData{
+        SENDER: 0,
+        UP_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
+        DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
+        INTERNAL_BUTTON_ARRAY: &([structs.N_ELEVATORS][structs.N_FLOORS]bool{}),
+        WORKING_ELEVATORS: &([structs.N_FLOORS]bool{}),
+        ELEVATOR_STATES: &([]structs.ElevatorState{}),
+        COUNTER: 0,
+    }
+	// Set elevator number
+	MS.ELEVATOR_NUMBER = ElevatorNumber
+
+	return MS
+}
+
+
+
+func (ms *MasterSlave) MainLoop() {
+	// Check if this elevator is Master
+	is_master := ms.CURRENT_DATA.SENDER == ms.ELEVATOR_NUMBER
+
+	// Main loop of Master-slave
+	for {
+		if is_master {
+			// Run if current elevator is master
+
+			// TODO: Update SystemData:
+			// Update calls, buttons
+			// Update the states of each elevator
+			// UpdateElevatorTargets()
+			// Increase counter
+
+
+			// Send updated SystemData
+			network.SendSystemData(ms.CURRENT_DATA)
+		
+		
+		} else {
+			// Run if current elevator is slave
+
+			// Receive data from master
+			received_data := network.ReceiveSystemData()
+
+			// Check if the received data is newer then current data, and update current data if so 
+			if received_data.COUNTER > ms.CURRENT_DATA.COUNTER {
+				ms.CURRENT_DATA = received_data
+			}
+
+
+			
+		}
+	}
+
+}
+
+func (ms *MasterSlave) UpdateElevatorTargets() {
 	// Get new elevator targets
 	movement_map := scheduler.CalculateElevatorMovement(ms.CURRENT_DATA)
 
@@ -28,24 +88,12 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 		"three": 3,
 	}
 	
-	// Update values in ELEVATOR_TARGETS
+	// Update values in ELEVATOR_TARGETS of SystemData
 	for k, v := range movement_map {
 		*ms.CURRENT_DATA.ELEVATOR_TARGETS[key_to_int_map[k]] = v;
 	}
 }
 
-
-func NewMasterSlave() *structs.SystemData {
-    return &structs.SystemData{
-        SENDER: 0,
-        UP_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
-        DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
-        INTERNAL_BUTTON_ARRAY: &([structs.N_ELEVATORS][structs.N_FLOORS]bool{}),
-        WORKING_ELEVATORS: &([structs.N_FLOORS]bool{}),
-        ELEVATOR_STATES: &([]structs.ElevatorState{}),
-        COUNTER: 0,
-    }
-}
 
 // HandleOrderFromMaster is a method on the MasterSlave struct that processes an order from the master.
 func (ms *MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error {
@@ -83,7 +131,7 @@ func (ms *MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error
 
 var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 
-func StartMasterSlave(leader *Elevator) {
+func StartMasterSlave(leader *MasterSlave) {
 	//Set the leader as the Master
 	leader.Master = true
 
@@ -118,7 +166,7 @@ func StartMasterSlave(leader *Elevator) {
 
 			// Receive SystemData from the master
 			data := &structs.SystemData{}
-			if err := receiveSystemData(conn, data); err != nil {
+			if err := network.receiveSystemData(conn, data); err != nil {
 				fmt.Printf("Error receiving SystemData: %v\n", err)
 				return
 			}
@@ -132,7 +180,7 @@ func StartMasterSlave(leader *Elevator) {
 		if time.Since(print_counter).Seconds() > 1 {
 			counter++
 			ms.CURRENT_DATA.COUNTER = counter
-			if err := sendSystemData(conn, ms.CURRENT_DATA); err != nil {
+			if err := network.sendSystemData(conn, ms.CURRENT_DATA); err != nil {
 				fmt.Printf("Error sending SystemData: %v\n", err)
 			}
 
@@ -143,38 +191,41 @@ func StartMasterSlave(leader *Elevator) {
 }
 
 
-// sendSystemData is a function that sends SystemData over a TCP connection.
-// It takes a net.Conn object representing the connection and a pointer to the SystemData object to be sent.
-// It returns an error if any occurs during the process.
-func sendSystemData(conn net.Conn, data *structs.SystemData) error {
-	// Create a new encoder that will write to conn
-	encoder := gob.NewEncoder(conn)
-	// Encode the SystemData object and send it over the connection
-	// If an error occurs during encoding, wrap it in a new error indicating that encoding failed
-	if err := encoder.Encode(data); err != nil {
-		return fmt.Errorf("failed to encode SystemData: %v", err)
-	}
-	// If no error occurred, return nil
-	return nil
-}
+// // sendSystemData is a function that sends SystemData over a TCP connection.
+// // It takes a net.Conn object representing the connection and a pointer to the SystemData object to be sent.
+// // It returns an error if any occurs during the process.
+// func sendSystemData(conn net.Conn, data *structs.SystemData) error {
+// 	// Create a new encoder that will write to conn
+// 	encoder := gob.NewEncoder(conn)
+// 	// Encode the SystemData object and send it over the connection
+// 	// If an error occurs during encoding, wrap it in a new error indicating that encoding failed
+// 	if err := encoder.Encode(data); err != nil {
+// 		return fmt.Errorf("failed to encode SystemData: %v", err)
+// 	}
+// 	// If no error occurred, return nil
+// 	return nil
+// }
 
-// receiveSystemData is a function that receives SystemData over a TCP connection.
-// It takes a net.Conn object representing the connection and a pointer to the SystemData object where the received data will be stored.
-// It returns an error if any occurs during the process.
-func receiveSystemData(conn net.Conn, data *structs.SystemData) error {
-	// Create a new decoder that will read from conn
-	decoder := gob.NewDecoder(conn)
-	// Decode the received data and store it in the SystemData object
-	// If an error occurs during decoding, wrap it in a new error indicating that decoding failed
-	if err := decoder.Decode(data); err != nil {
-		return fmt.Errorf("failed to decode SystemData: %v", err)
-	}
-	// If no error occurred, return nil
-	return nil
-}
+// // receiveSystemData is a function that receives SystemData over a TCP connection.
+// // It takes a net.Conn object representing the connection and a pointer to the SystemData object where the received data will be stored.
+// // It returns an error if any occurs during the process.
+// func receiveSystemData(conn net.Conn, data *structs.SystemData) error {
+// 	// Create a new decoder that will read from conn
+// 	decoder := gob.NewDecoder(conn)
+// 	// Decode the received data and store it in the SystemData object
+// 	// If an error occurs during decoding, wrap it in a new error indicating that decoding failed
+// 	if err := decoder.Decode(data); err != nil {
+// 		return fmt.Errorf("failed to decode SystemData: %v", err)
+// 	}
+// 	// If no error occurred, return nil
+// 	return nil
+// }
 
+
+//TODO: Implement function to check if the new targets differ from the current ones
 func (ms *MasterSlave) CheckIfReceivedNewTargets() {
 	ms.CURRENT_DATA.COUNTER
 }
+
 
 
