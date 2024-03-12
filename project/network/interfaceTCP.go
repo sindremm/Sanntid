@@ -116,7 +116,7 @@ func EncodeSystemData(s *structs.SystemData) ([]byte){
 }
 
 // Decode []byte sent with TCP into SystemData struct
-func DecodeSystemData(data []byte) structs.SystemData{
+func DecodeSystemData(data []byte) *structs.SystemData{
 	var systemData structs.SystemData
 
 	err := json.Unmarshal([]byte(data), &systemData)
@@ -131,11 +131,10 @@ func DecodeSystemData(data []byte) structs.SystemData{
 
 
 // Asks slave_address to connect, then sends a message to slave_address, then reads from slave
-func SendSystemData(localIP string, slave_id int, TCPmessage *structs.SystemData) (){
+func SendSystemData(client_address string, TCPmessage *structs.SystemData) (){
 
-	slave_address = ElevatorMap[slave_id]
-	// Dials slave to establish connection
-	conn, err := net.DialTimeout("tcp", slave_address, structs.TCP_timeout)
+	// Dial client to establish connection
+	conn, err := net.DialTimeout("tcp", client_address, structs.TCP_timeout)
 	if err != nil {
 		//TODO: Use peers to check if alive, and remove if gone
 		fmt.Printf("Some error 1 %v\n", err)
@@ -146,24 +145,13 @@ func SendSystemData(localIP string, slave_id int, TCPmessage *structs.SystemData
 
 	//Encode systemdata and add zero termination
 	msg := append(EncodeSystemData(&TCPmessage), "\000"...)
+
+	// Send data
 	_, err = conn.Write(msg)
 	if err != nil {
 		fmt.Printf("Failed to send message %v\n", err)
 		return
 		//TODO: fix this err, returns infinitely many "Message: Failed to read message EOF"
-	}
-
-	for {
-		buffer := make([]byte, 2048)
-		//Reading from slave
-		n, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Printf("Failed to read message %v\n", err)
-		}
-		slaveSystemData = DecodeSystemData(buffer[:n])
-		*ELEVATOR_STATES[slave_id] = slaveSystemData.ELEVATOR_STATES[slave_id]
-		*INTERNAL_BUTTON_ARRAY[slave_id] = slaveSystemData.INTERNAL_BUTTON_ARRAY[slave_id]
-		//TODO: Update the relevant up and down arrays
 	}
 }
 
@@ -171,13 +159,7 @@ func SendSystemData(localIP string, slave_id int, TCPmessage *structs.SystemData
 
 
 // Listens and accepts connection on our_port, then sends a message back
-func ReceiveSystemData(listen_port string, slaveMessage structs.SystemData) (structs.SystemData) {
-	// Find local IP of computer
-	localIP, err := localip.LocalIP()
-	if err != nil {
-		fmt.Printf("\nIP: %v", localIP)
-	}
-	fmt.Printf("\nIP: %v", localIP)
+func ReceiveSystemData(listen_port string, write_data *structs.SystemData) (structs.SystemData) {
 
 	// Listen for connection on specified port 
 	l, err := net.Listen("tcp", ":"+listen_port)
@@ -200,20 +182,18 @@ func ReceiveSystemData(listen_port string, slaveMessage structs.SystemData) (str
 		n, err := conn.Read(buffer)
 		if err != nil {
 			fmt.Printf("Failed to read message %v\n", err)
+		} else {
+			// Return received data
+		write_data = DecodeSystemData(buffer[:n])
 		}
-		SlaveSendBtnInfo(conn, slaveMessage)
-		// Return received data
-		return DecodeSystemData(buffer[:n])
 	}
 }
 
-func SlaveSendBtnInfo(conn net.Conn, slaveMessage *structs.SystemData) {
+
+// The slave sends it's info to the master unit
+func SlaveSendInfoToMaster(master_address string, slave_message *structs.SystemData) {
 	//Encode systemdata and add zero termination
-	msg := append(EncodeSystemData(&slaveMessage), "\000"...)
-	_, err = conn.Write(msg)
-	if err != nil {
-		fmt.Printf("Failed to send message %v\n", err)
-		return
-		//TODO: fix this err, returns infinitely many "Message: Failed to read message EOF"
-	}
+
+	SendSystemData(master_address, slave_message)
+	
 }

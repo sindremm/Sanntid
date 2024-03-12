@@ -15,7 +15,7 @@ const N_ELEVATORS int = 3;
 // Datastruct containing all the information of the system
 type SystemData struct{
 	// The elevator sending the message (who is also master)
-	SENDER int
+	MASTER_ID int
 	
 	// ALL RECEIVED ORDERS
 	UP_BUTTON_ARRAY 	  *[N_FLOORS]bool
