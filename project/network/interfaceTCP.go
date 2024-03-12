@@ -23,9 +23,6 @@ import (
 
 // var slave_address = slave_IP + ":" + slave_port
 
-//Map for the elevators
-var ElevatorMap = make(map[int]string)
-
 
 
 func main() {
@@ -196,4 +193,13 @@ func SlaveSendInfoToMaster(master_address string, slave_message *structs.SystemD
 
 	SendSystemData(master_address, slave_message)
 	
+}
+
+//Adds new address and id number to the ElevatorMap
+func UpdateElevatorMap(newElevatorID string) {
+
+	splitString := strings.Split(newElevatorID, ":")
+	elevatorNum = splitString[0]
+	elevatorAddress = splitString[1]
+	ElevatorMap[elevatorNum] = elevatorAddress
 }

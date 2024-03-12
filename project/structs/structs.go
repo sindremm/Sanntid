@@ -68,16 +68,25 @@ const (
 )
 
 // ########################### Network ############################
+
+
+
 type AliveMsg struct {
 	Message string
 	address string
 	Iter    int
 }
 
+//DELETE SOON
+/*
 type TestTCPMsg struct {
 	SomeMessage string
 	TempOrder   int
 }
+*/
 
 // Changes timeout time for Dial. 500 milliseconds = 0.5 second
 var TCP_timeout = 500 * time.Millisecond
+
+//Map of the ID number and address of the different elevators
+var ElevatorMap = make(map[int]string)
