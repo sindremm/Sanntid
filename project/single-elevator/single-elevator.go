@@ -23,7 +23,7 @@ type Elevator struct {
 	is_stopped    *bool
 
 	// Variable containing the current state
-	internal_state *structs.State
+	internal_state *structs.ElevatorState
 
 	// Variable showing the last visited floor
 	at_floor *int
@@ -41,7 +41,7 @@ type Elevator struct {
 
 func MakeElevator(elevatorNumber int) Elevator {
 	// Set state to idle
-	var start_state structs.State = structs.IDLE
+	var start_state structs.ElevatorState = structs.IDLE
 
 	// Exception value
 	starting_floor := -1
@@ -116,8 +116,8 @@ func (e Elevator) Main() {
 				if *e.at_floor != -1 {
 					e.ClearOrdersAtFloor()
 				}
-
-				e.PickTarget()
+				//TODO: implement target selection
+				// e.PickTarget()
 			}
 			
 
@@ -211,7 +211,7 @@ func (e Elevator) PickTarget(calls [structs.N_FLOORS][2]bool) {
 			}
 
 			// Set target if an order exists on floor
-			if calls[check_floor][0] | calls[check_floor][1] {
+			if calls[check_floor][0] || calls[check_floor][1] {
 				new_target = check_floor
 				break
 			}
@@ -226,7 +226,7 @@ func (e Elevator) PickTarget(calls [structs.N_FLOORS][2]bool) {
 			}
 
 			// Set target if an order exists on floor
-			if calls[check_floor][0] | calls[check_floor][1] {
+			if calls[check_floor][0] || calls[check_floor][1] {
 				new_target = check_floor
 				break
 			}

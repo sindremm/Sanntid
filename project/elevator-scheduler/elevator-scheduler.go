@@ -1,5 +1,5 @@
 // package elevatorscheduler
-package main
+package elevsched
 
 import (
 	// "Driver-go/elevio"
@@ -91,7 +91,7 @@ type MessageStruct struct {
 }
 
 // Return the movements of the elevator
-func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][][2]bool) {
+func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][structs.N_FLOORS][2]bool) {
 	command := "./hall_request_assigner"
 
 	// Create json string from the system data
@@ -101,7 +101,7 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][][2]
 	if err != nil {
 		fmt.Printf("%s", err)
 		//TODO: create error output
-		return new(map[string][][2]bool)
+		return new(map[string][structs.N_FLOORS][2]bool)
 	}
 
 	// Run the cost function to get new orders
@@ -111,11 +111,11 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][][2]
 	if err != nil {
 		fmt.Println(err.Error())
 		//TODO: create error output
-		return new(map[string][][2]bool)
+		return new(map[string][structs.N_FLOORS][2]bool)
 	}
 
 	// Decode the new orders
-	output := new(map[string][][2]bool)
+	output := new(map[string][structs.N_FLOORS][2]bool)
 	// ERR: 
 	json.Unmarshal([]byte(stdout), &output)
 
@@ -125,7 +125,20 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][][2]
 
 func main() {
 	//TODO: use a map to correspond states to elevator so it is not mixed up if some elevators are offline
-	states := []structs.ElevatorData{
+	states := [structs.N_ELEVATORS]structs.ElevatorData{
+		{
+			ALIVE:         true,
+			CURRENT_FLOOR:  2,
+			ELEVATOR_TARGETS:   [structs.N_FLOORS][2]bool{
+				[2]bool{false, true}, 
+				[2]bool{false, false}, 
+				[2]bool{false, false},
+				[2]bool{false, false},
+			},
+			DIRECTION:      structs.UP,
+			INTERNAL_BUTTON_ARRAY: [structs.N_FLOORS]bool{false, false, false, true},
+			INTERNAL_STATE: 1,
+		},
 		{
 			ALIVE:         true,
 			CURRENT_FLOOR:  2,

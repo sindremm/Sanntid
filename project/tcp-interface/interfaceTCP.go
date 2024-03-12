@@ -6,10 +6,11 @@ import (
 	"net"
 	"log"
 
-	//"strings"
+	"strings"
 	"elevator/network/localip"
 	"elevator/structs"
 	"encoding/json"
+	"strconv"
 	//"time"
 )
 
@@ -114,7 +115,7 @@ func EncodeSystemData(s *structs.SystemData) ([]byte){
 
 // Decode []byte sent with TCP into SystemData struct
 func DecodeSystemData(data []byte) *structs.SystemData{
-	var systemData structs.SystemData
+	var systemData *structs.SystemData
 
 	err := json.Unmarshal([]byte(data), &systemData)
 	if err != nil {
@@ -141,7 +142,7 @@ func SendSystemData(client_address string, TCPmessage *structs.SystemData) (){
 	// defer conn.Close()
 
 	//Encode systemdata and add zero termination
-	msg := append(EncodeSystemData(&TCPmessage), "\000"...)
+	msg := append(EncodeSystemData(TCPmessage), "\000"...)
 
 	// Send data
 	_, err = conn.Write(msg)
@@ -156,10 +157,10 @@ func SendSystemData(client_address string, TCPmessage *structs.SystemData) (){
 
 
 // Listens and accepts connection on our_port, then sends a message back
-func ReceiveSystemData(listen_port string, write_data *structs.SystemData) (structs.SystemData) {
+func ReceiveSystemData(listen_address string, write_data *structs.SystemData) (structs.SystemData) {
 
 	// Listen for connection on specified port 
-	l, err := net.Listen("tcp", ":"+listen_port)
+	l, err := net.Listen("tcp", listen_address)
 	if err != nil {
 		fmt.Printf("Failed to listen message %v\n", err)
 	}
@@ -196,10 +197,10 @@ func SlaveSendInfoToMaster(master_address string, slave_message *structs.SystemD
 }
 
 //Adds new address and id number to the ElevatorMap
-func UpdateElevatorMap(newElevatorID string) {
+func UpdateElevatorMap(SystemData *structs.SystemData, newElevatorID string) {
 
 	splitString := strings.Split(newElevatorID, "-")
-	elevatorNum = splitString[0]
-	elevatorAddress = splitString[1]
-	*SystemData.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
+	elevatorNum, _ := strconv.Atoi(splitString[0])
+	elevatorAddress := splitString[1]
+	SystemData.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
 }

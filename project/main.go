@@ -6,14 +6,22 @@ import (
 	// "Network-go/network/peers"
 	"Driver-go/elevio"
 	"time"
+	// "strings"
 	singleelev "elevator/single-elevator"
 	master "elevator/master-slave"
 	"elevator/structs"
 )
 
+var addresses [4]string;
+
 
 
 func main() {
+
+	addresses[0] = "ad"
+	addresses[1] = "dsa"
+	addresses[2] = "dsa"
+	addresses[3] = "fdsa"
 
 	elevio.Init("localhost:15657", structs.N_FLOORS)
 
@@ -30,16 +38,18 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 
-	
+	unit_number := 0
 
 	// Create elevator and start main loop
-	elevator := singleelev.MakeElevator()
+	elevator := singleelev.MakeElevator(unit_number)
 
+	// Specify elevator port
+	port := ":8080"
 	// Create master slave
-	master_slave := master.MakeMasterSlave(1, elevator)
+	master_slave := master.MakeMasterSlave(unit_number, port, elevator)
 
 	// Start reading elevator channels
-	go elevator.ReadChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
+	go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
 
 	// Start master main loop
 	go master_slave.MainLoop()

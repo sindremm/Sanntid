@@ -242,7 +242,7 @@ func (e *Elevator) ReceiveHeartbeat(port int) {
 
 
 // CheckHeartbeat checks if a heartbeat has been received from the leader.
-func (e *Elevator) CheckHeartbeat(id string, peers_port int, broadcast_port int) {
+func CheckHeartbeat(id string, peers_port int, broadcast_port int) {
 	peers_update_channel := make(chan peers.PeerUpdate)
 	go peers.Receiver(peers_port, peers_update_channel)
 
@@ -259,15 +259,15 @@ func (e *Elevator) CheckHeartbeat(id string, peers_port int, broadcast_port int)
 			fmt.Printf("  Lost:     %q\n", p.Lost)
 			//Updates the ElevatorMap each time a new peer appears
 			if p.New != nil{
-				UpdateElevatorMap(p.New)
+				// UpdateElevatorMap(p.New)
 			}
 		case a := <-aliveCheck:
 			fmt.Printf("Received %#v \n", a)
-		default:
-			if time.Since(e.LastHeartbeat) > 30*time.Second { // Timeout after 30 seconds
-				fmt.Println("Leader failure detected. Starting new election.")
-				e.StartElection()
-			}
+		// default:
+		// 	if time.Since(e.LastHeartbeat) > 30*time.Second { // Timeout after 30 seconds
+		// 		fmt.Println("Leader failure detected. Starting new election.")
+		// 		e.StartElection()
+		// 	}
 		}
 	}
 }

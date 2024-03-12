@@ -22,7 +22,7 @@ type SystemData struct{
 	DOWN_BUTTON_ARRAY     *[N_FLOORS]bool
 	
 	// POSITION AND TARGET OF EACH ELEVATOR
-	ELEVATOR_DATA	   *[]ElevatorData
+	ELEVATOR_DATA	   *[N_ELEVATORS]ElevatorData
 	
 	// COUNTER FOR MESSAGE SYNCHRONIZATION 
 	COUNTER int
@@ -55,9 +55,9 @@ const (
 
 
 // ###################### Single Elevator ##########################3
-type SingleElevatorState int
+type ElevatorState int
 const (
-	IDLE SingleElevatorState = iota
+	IDLE ElevatorState = iota
 	MOVING
 	STOPPED
 	DOOR_OPEN
