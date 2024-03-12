@@ -20,25 +20,28 @@ type SystemData struct{
 	// ALL RECEIVED ORDERS
 	UP_BUTTON_ARRAY 	  *[N_FLOORS]bool
 	DOWN_BUTTON_ARRAY     *[N_FLOORS]bool
-	INTERNAL_BUTTON_ARRAY *[N_ELEVATORS][N_FLOORS]bool
-
-	// ALL CURRENTLY WORKING ELEVATORS
-	WORKING_ELEVATORS    *[N_ELEVATORS]bool
-
+	
 	// POSITION AND TARGET OF EACH ELEVATOR
-	ELEVATOR_STATES	   *[N_ELEVATORS]ElevatorState
-
-	// TARGETS OF EACH ELEVATOR
-	ELEVATOR_TARGETS *[N_ELEVATORS][N_FLOORS][2]bool
+	ELEVATOR_DATA	   *[N_ELEVATORS]ElevatorData
 	
 	// COUNTER FOR MESSAGE SYNCHRONIZATION 
 	COUNTER int
 }
 
 
-type ElevatorState struct{
-	ACTIVE bool
-	INTERNAL_STATE int // State machine state of elevator
+type ElevatorData struct{
+	// Specifies wether the elevator is in working condition
+	ALIVE bool
+	// The address of the elevator for TCP communication 
+	ADDRESS string
+
+	// All active cab buttons
+	INTERNAL_BUTTON_ARRAY *[N_FLOORS]bool
+	// TARGETS OF EACH ELEVATOR
+	ELEVATOR_TARGETS *[N_FLOORS][2]bool
+	// State machine state of elevator
+	INTERNAL_STATE int 
+	// The last floor the elevator visited
 	CURRENT_FLOOR int
 	//TODO: update usage of direction
 	DIRECTION Direction // 0 for stop, 1 for up, 2 for down
@@ -88,5 +91,3 @@ type TestTCPMsg struct {
 // Changes timeout time for Dial. 500 milliseconds = 0.5 second
 var TCP_timeout = 500 * time.Millisecond
 
-//Map of the ID number and address of the different elevators
-var ElevatorMap = make(map[int]string)
