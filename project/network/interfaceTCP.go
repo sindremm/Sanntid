@@ -1,10 +1,9 @@
-package main
+package interfaceTCP
 
 import (
 	"flag"
 	"fmt"
 	"net"
-	"strconv"
 	"log"
 
 	//"strings"
@@ -16,13 +15,13 @@ import (
 
 
 // Added comment
-var our_port = "10005"
+// var our_port = "10005"
 
-var slave_IP = "172.23.70.94"
+// var slave_IP = "172.23.70.94"
 
-var slave_port = "10005"
+// var slave_port = "10005"
 
-var slave_address = slave_IP + ":" + slave_port
+// var slave_address = slave_IP + ":" + slave_port
 
 // Comment out sections: ctrl, k c
 func main() {
@@ -103,7 +102,7 @@ func updateLife(id string, peers_port int, broadcast_port int) {
 }
 */
 
-//Encodes systemData to []byte to be sent by TCP
+// Encodes systemData struct to []byte to be sent by TCP
 func EncodeSystemData(s *structs.SystemData) ([]byte){
 	b, err := json.Marshal(s)
 	if err!= nil {
@@ -112,7 +111,7 @@ func EncodeSystemData(s *structs.SystemData) ([]byte){
 	return b
 }
 
-//Decodes SystemData 
+// Decode []byte sent with TCP into SystemData struct
 func DecodeSystemData(data []byte) structs.SystemData{
 	var systemData structs.SystemData
 
@@ -128,7 +127,7 @@ func DecodeSystemData(data []byte) structs.SystemData{
 
 
 // Asks slave_address to connect, then sends a message to slave_address, then reads from slave
-func SendSystemData(localIP string, TCPmessage structs.SystemData) (){
+func SendSystemData(localIP string, slave_address string, TCPmessage structs.SystemData) (){
 
 	// Dials slave to establish connection
 	conn, err := net.DialTimeout("tcp", slave_address, structs.TCP_timeout)
@@ -164,7 +163,7 @@ func SendSystemData(localIP string, TCPmessage structs.SystemData) (){
 
 
 // Listens and accepts connection on our_port, then sends a message back
-func ReceiveSystemData() (structs.SystemData) {
+func ReceiveSystemData(listen_port string) (structs.SystemData) {
 	// Find local IP of computer
 	localIP, err := localip.LocalIP()
 	if err != nil {
@@ -173,7 +172,7 @@ func ReceiveSystemData() (structs.SystemData) {
 	fmt.Printf("\nIP: %v", localIP)
 
 	// Listen for connection on specified port 
-	l, err := net.Listen("tcp", ":"+our_port)
+	l, err := net.Listen("tcp", ":"+listen_port)
 	if err != nil {
 		fmt.Printf("Failed to listen message %v\n", err)
 	}
