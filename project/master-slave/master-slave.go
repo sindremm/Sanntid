@@ -11,7 +11,6 @@ import (
 	"Driver-go/elevio"
 
 	scheduler "elevator/elevator-scheduler"
-	single "elevator/single-elevator"
 	"elevator/structs"
 	tcp_interface "elevator/tcp-interface"
 
@@ -23,13 +22,12 @@ import (
 type MasterSlave struct {
 	CURRENT_DATA  *structs.SystemData
 	UNIT_ID       int
-	ELEVATOR_UNIT *single.Elevator
 	IP_ADDRESS    string
 	LISTEN_PORT   string
 }
 
 // Create a MasterSlave
-func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterSlave {
+func MakeMasterSlave(UnitID int, port string) *MasterSlave {
 	MS := new(MasterSlave)
 
 	// Initialize current data
@@ -48,7 +46,7 @@ func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterS
 	MS.UNIT_ID = UnitID
 
 	// Set corresponding elevator
-	MS.ELEVATOR_UNIT = &elevator
+	// MS.ELEVATOR_UNIT = &elevator
 
 	//IP
 
@@ -60,9 +58,6 @@ func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterS
 
 	// Set the port where tcp messages are received
 	MS.LISTEN_PORT = port
-
-	// Start threads
-	go elevator.Main()
 
 	return MS
 }
@@ -136,8 +131,8 @@ func (ms *MasterSlave) MainLoop() {
 			}
 		}
 
-		calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
-		ms.ELEVATOR_UNIT.PickTarget(calls)
+		// calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
+		// ms.ELEVATOR_UNIT.PickTarget(calls)
 
 		time.Sleep(5*time.Second)
 	}

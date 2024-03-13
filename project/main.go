@@ -49,19 +49,21 @@ func main() {
 	flag.Parse()
 
 	// Create elevator and start main loop
-	elevator := singleelev.MakeElevator(received_id)
-	go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
-
 	// Create master slave
-	master_slave := master.MakeMasterSlave(received_id, port, elevator)
+	master_slave := master.MakeMasterSlave(received_id, port)
+	elevator := singleelev.MakeElevator(received_id, master_slave)
+		
 
 	// Start reading elevator channels
-	
+	go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
+	go elevator.ElevatorLoop()
 
 	
 	// Start master main loop
 	go master_slave.ReadButtons(drv_buttons)
 	go master_slave.MainLoop()
+
+	
 	
 
 	// Prevent the program from terminating

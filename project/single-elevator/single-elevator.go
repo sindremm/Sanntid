@@ -1,13 +1,17 @@
 package singleelev
 
 import (
-	"Driver-go/elevio"
-	"elevator/structs"
 	// "flag"
 	// "fmt"
 	// "os"
 	"sync"
 	"time"
+
+	"Driver-go/elevio"
+
+	"elevator/structs"
+	master_slave "elevator/master-slave"
+	// tcp_interface "elevator/tcp-interface"
 )
 
 //TODO: Remove unused code
@@ -36,10 +40,11 @@ type Elevator struct {
 
 	// Variable for keeping track of when interrupt ends
 	interrupt_end *time.Time
+	master_unit *master_slave.MasterSlave
 }
 
 
-func MakeElevator(elevatorNumber int) Elevator {
+func MakeElevator(elevatorNumber int, master *master_slave.MasterSlave) Elevator {
 	// Set state to idle
 	var start_state structs.ElevatorState = structs.IDLE
 
@@ -60,6 +65,8 @@ func MakeElevator(elevatorNumber int) Elevator {
 
 	start_time := time.Now()
 
+	
+
 	return Elevator{
 		&elevio.ButtonEvent{},
 		&floor_number,
@@ -69,10 +76,11 @@ func MakeElevator(elevatorNumber int) Elevator {
 		&starting_floor,
 		&target_floor,
 		&starting_direction,
-		&start_time}
+		&start_time,
+		master}
 }
 
-func (e Elevator) Main() {
+func (e Elevator) ElevatorLoop() {
 
 	if *e.at_floor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Up)
@@ -328,6 +336,14 @@ func (e Elevator) Stop() {
 func (e Elevator) RemoveOrdersAtFloor(floor int, direction structs.Direction) {
 	//TODO: Fill in function. May have to be placed in Master-Slave or elsewhere
 }
+
+
+func (e Elevator) SendUpdateToMaster(msgType structs.TCPMsg, message []byte) {
+	select {
+		case msgType == structs.
+	}
+}
+
 
 // Reset all elevator elements
 func ResetElevator() {
