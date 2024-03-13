@@ -50,12 +50,13 @@ func main() {
 
 	// Create elevator and start main loop
 	elevator := singleelev.MakeElevator(received_id)
+	go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
 
 	// Create master slave
 	master_slave := master.MakeMasterSlave(received_id, port, elevator)
 
 	// Start reading elevator channels
-	//go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
+	
 
 	
 	// Start master main loop

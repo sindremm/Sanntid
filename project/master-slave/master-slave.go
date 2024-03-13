@@ -68,13 +68,13 @@ func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterS
 }
 
 func (ms *MasterSlave) MainLoop() {
-	// // Heartbeat
-	// peers_port := 33224
-	// broadcast_port := 32244
-	// input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
-	// Heartbeat(input_id, peers_port, broadcast_port)
+	// Heartbeat
+	peers_port := 33224
+	broadcast_port := 32244
+	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
+	Heartbeat(input_id, peers_port, broadcast_port)
 
-	// go CheckHeartbeat(ms, peers_port, broadcast_port)
+	go CheckHeartbeat(ms, peers_port, broadcast_port)
 
 	// Check if this elevator is Master
 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
@@ -101,11 +101,10 @@ func (ms *MasterSlave) MainLoop() {
 			for {
 				select {
 				case data := <-received_data_channel:
-					fmt.Printf("Hello\n")
 					decoded_data := tcp_interface.DecodeMessage(data)
 					id := decoded_data.Sender_id
 					ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_data.Data.ELEVATOR_DATA[id]
-					fmt.Printf("data: %v", data)
+					// fmt.Printf("data: %s", structs.SystemData_to_string(decoded_data.Data))
 				default:
 					break loop
 				}
@@ -122,7 +121,7 @@ func (ms *MasterSlave) MainLoop() {
 
 			// Send updated SystemData
 			ms.BroadcastSystemData()
-			fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
+			// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
 			
 		} else {
 			// Run if current elevator is slave

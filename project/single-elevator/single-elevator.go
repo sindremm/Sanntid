@@ -79,24 +79,23 @@ func (e Elevator) Main() {
 		*e.internal_state = structs.MOVING
 	}
 
-	// fmt.Printf("%s", e.internal_state)
+	
 	for {
 		// Check for stop-button press
-		//fmt.Printf("Stopped: %t \n", *e.is_stopped)
-		//fmt.Printf("Obstructed: %t \n", *e.is_obstructed)
-		//fmt.Printf("Obstructed: %t \n", *e.current_floor)
+		
 		if *e.is_stopped {
 			// fmt.Print("Stop\n")
 			*e.internal_state = structs.STOPPED
 		}
 
+
+		// fmt.Printf("Internal_state: %v", e.internal_state)
+		// fmt.Printf("Stopped: %t \n", *e.is_stopped)
+		// fmt.Printf("Obstructed: %t \n", *e.is_obstructed)
 		// fmt.Printf("current floor: %d\n", *e.current_floor)
 		// fmt.Printf("at floor: %d\n", *e.at_floor)
 		// fmt.Printf("target floor: %d\n", *e.target_floor)
 		// fmt.Printf("moving direction: %d\n", *e.moving_direction)
-		// fmt.Printf("d buttons: %t\n", *e.down_button_array)
-		// fmt.Printf("u buttons: %t\n", *e.up_button_array)
-		// fmt.Printf("i buttons:%t\n", *e.internal_button_array)
 		// fmt.Printf("---\n")
 
 		switch state := *e.internal_state; state {
