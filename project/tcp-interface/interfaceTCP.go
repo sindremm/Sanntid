@@ -105,7 +105,7 @@ func updateLife(id string, peers_port int, broadcast_port int) {
 */
 
 // Encodes systemData struct to []byte to be sent by TCP
-func EncodeSystemData(s *structs.SystemData) ([]byte){
+func EncodeMessage(s *structs.TCPMsg) ([]byte){
 	b, err := json.Marshal(s)
 	if err!= nil {
 		fmt.Print("Error with Marshal \n")
@@ -114,14 +114,14 @@ func EncodeSystemData(s *structs.SystemData) ([]byte){
 }
 
 // Decode []byte sent with TCP into SystemData struct
-func DecodeSystemData(data []byte) *structs.SystemData{
-	var systemData *structs.SystemData
+func DecodeMessage(data []byte) *structs.TCPMsg{
+	var received_message *structs.TCPMsg
 
-	err := json.Unmarshal([]byte(data), &systemData)
+	err := json.Unmarshal([]byte(data), &received_message)
 	if err != nil {
         log.Fatalf("Error with decoding:  %s", err)
     }
-	return systemData
+	return received_message
 }
 
 
@@ -170,7 +170,7 @@ func ReceiveData(listen_address string, reading chan []byte) {
 		}
 
 		defer conn.Close()
-		
+
 		buffer := make([]byte, 2048)
 
 		//buffer[:n] is message from client

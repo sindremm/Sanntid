@@ -1,47 +1,47 @@
 package master_slave
 
-import  (
+import (
 	"fmt"
 	// "net"
 	// "os/exec"
 	//"strconv"
-	// "time"
-	
+	"time"
+
 	"Driver-go/elevio"
 
-	"elevator/structs"
-	tcp_interface "elevator/tcp-interface"
 	scheduler "elevator/elevator-scheduler"
 	single "elevator/single-elevator"
+	"elevator/structs"
+	tcp_interface "elevator/tcp-interface"
 )
 
 type MasterSlave struct {
-	CURRENT_DATA *structs.SystemData
-	UNIT_ID int
+	CURRENT_DATA  *structs.SystemData
+	UNIT_ID       int
 	ELEVATOR_UNIT *single.Elevator
-	IP_ADDRESS string
-	LISTEN_PORT string
+	IP_ADDRESS    string
+	LISTEN_PORT   string
 }
 
 // Create a MasterSlave
 func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterSlave {
 	MS := new(MasterSlave)
-	
+
 	// Initialize current data
 	SD := structs.SystemData{
-        MASTER_ID: 0,
-        UP_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
-        DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
-        ELEVATOR_DATA: &([structs.N_ELEVATORS]structs.ElevatorData{}),
-        COUNTER: 0,
-    }
+		MASTER_ID:         0,
+		UP_BUTTON_ARRAY:   &([structs.N_FLOORS]bool{}),
+		DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
+		ELEVATOR_DATA:     &([structs.N_ELEVATORS]structs.ElevatorData{}),
+		COUNTER:           0,
+	}
 
 	// Set data
 	MS.CURRENT_DATA = &SD
-	
+
 	// Set identifying ID of unit
 	MS.UNIT_ID = UnitID
-	
+
 	// Set corresponding elevator
 	MS.ELEVATOR_UNIT = &elevator
 
@@ -54,54 +54,71 @@ func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterS
 	return MS
 }
 
-
-
 func (ms *MasterSlave) MainLoop() {
+	
 	// Check if this elevator is Master
 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 
 	// Start listening to received data
 	received_data_channel := make(chan []byte)
-	own_address := ms.IP_ADDRESS + ms.LISTEN_PORT 
-	tcp_interface.ReceiveData(own_address, received_data_channel)
+	own_address := ms.IP_ADDRESS + ms.LISTEN_PORT
+	
+	// Start reading received data
+	go tcp_interface.ReceiveData(own_address, received_data_channel)
+	
+	
 
 	// Main loop of Master-slave
 	for {
-		fmt.Printf("%v", ms.CURRENT_DATA)
+		// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
 		if is_master {
+			time.Sleep(time.Second)
+			// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
+
+
 			// Run if current elevator is master
 
 			// TODO: Update SystemData:
+
+			// Get all data from channel and insert into SystemData
+			fmt.Printf("Hello\n")
+			for data := range received_data_channel {
+				decoded_data := tcp_interface.DecodeMessage(data)
+				id := decoded_data.Sender_id
+				ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_data.Data.ELEVATOR_DATA[id]
+			}
 			// Update calls, buttons
 			// Update the states of each elevator
-			// UpdateElevatorTargets() (Only run when new calls, or update in state of elevator)
-			// Increase counter
-			ms.UpdateElevatorTargets()
 
+			// Increase counter
+			ms.CURRENT_DATA.COUNTER += 1
+
+			// UpdateElevatorTargets() (Only run when new calls, or update in state of elevator)
+			ms.UpdateElevatorTargets()
 
 			// Send updated SystemData
 			ms.BroadcastSystemData()
-			
-		
-		
+
 		} else {
 			// Run if current elevator is slave
 
 			// Receive data from master
-			received_data := <- received_data_channel
-			decoded_data := tcp_interface.DecodeSystemData(received_data)
-			
+			received_data := <-received_data_channel
+			decoded_data := tcp_interface.DecodeMessage(received_data)
 
-			// Check if the received data is newer then current data, and update current data if so 
-			if decoded_data.COUNTER > ms.CURRENT_DATA.COUNTER {
-				ms.CURRENT_DATA = decoded_data
+			// Check if the received data is newer then current data, and update current data if so
+			if decoded_data.Data.COUNTER > ms.CURRENT_DATA.COUNTER {
+				ms.CURRENT_DATA = &decoded_data.Data
 			}
 		}
+		
 
 		calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
 		ms.ELEVATOR_UNIT.PickTarget(calls)
-	}
+		
 
+		
+	}
 }
 
 func (ms *MasterSlave) BroadcastSystemData() {
@@ -114,10 +131,14 @@ func (ms *MasterSlave) BroadcastSystemData() {
 			continue
 		}
 		// Send system data to client
-		encoded_system_data = tcp_interface.EncodeSystemData(ms.CURRENT_DATA)
+		send_message := structs.TCPMsg{
+			Sender_id: ms.UNIT_ID,
+			Data:      *ms.CURRENT_DATA,
+		}
+		encoded_system_data = tcp_interface.EncodeMessage(&send_message)
 		tcp_interface.SendData(client_address, encoded_system_data)
 	}
-	
+
 }
 
 // Read from the channels and put data into variables
@@ -134,8 +155,6 @@ func (ms *MasterSlave) ReadButtons(button_order chan elevio.ButtonEvent) {
 	}
 }
 
-
-
 // Convert order to readable format
 func (ms *MasterSlave) InterpretOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType) {
 	order_floor := button_order.Floor
@@ -149,16 +168,15 @@ func (ms *MasterSlave) AddOrderToSystemDAta(floor int, button elevio.ButtonType)
 	switch button {
 	case 0:
 		ms.CURRENT_DATA.UP_BUTTON_ARRAY[floor] = true
-		elevio.SetButtonLamp(elevio.BT_HallUp, floor, true);
+		elevio.SetButtonLamp(elevio.BT_HallUp, floor, true)
 	case 1:
 		ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = true
-		elevio.SetButtonLamp(elevio.BT_HallDown, floor, true);
+		elevio.SetButtonLamp(elevio.BT_HallDown, floor, true)
 	case 2:
 		ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].INTERNAL_BUTTON_ARRAY[floor] = true
-		elevio.SetButtonLamp(elevio.BT_Cab, floor, true);
+		elevio.SetButtonLamp(elevio.BT_Cab, floor, true)
 	}
 }
-
 
 func (ms *MasterSlave) UpdateElevatorTargets() {
 	// Get new elevator targets
@@ -166,14 +184,14 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 
 	// Map to convert from map of elevators to array of elevators
 	key_to_int_map := map[string]int{
-		"one": 1,
-	 	"two": 2, 
+		"one":   1,
+		"two":   2,
 		"three": 3,
 	}
-	
+
 	// Update values in ELEVATOR_TARGETS of SystemData
 	for k := range movement_map {
-		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k] - 1].ELEVATOR_TARGETS = movement_map[k];
+		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]-1].ELEVATOR_TARGETS = movement_map[k]
 	}
 }
 
@@ -214,7 +232,6 @@ func (ms *MasterSlave) RequestSlaveData(data_string string) {
 // 	fmt.Println("Master is dead, switching to backup")
 // }
 
-
 var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 
 // func StartMasterSlave(leader *MasterSlave) {
@@ -226,7 +243,6 @@ var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 // 	counter := 0
 
 // 	ms := &MasterSlave{}
-
 
 // 	filename := "/home/student/Documents/AjananMiaSindre/Sanntid/exercise_4/main.go"
 
@@ -276,7 +292,6 @@ var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 // 	}
 // }
 
-
 // // sendSystemData is a function that sends SystemData over a TCP connection.
 // // It takes a net.Conn object representing the connection and a pointer to the SystemData object to be sent.
 // // It returns an error if any occurs during the process.
@@ -307,11 +322,7 @@ var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 // 	return nil
 // }
 
-
 // //TODO: Implement function to check if the new targets differ from the current ones
 // func (ms *MasterSlave) CheckIfReceivedNewTargets() {
 // 	ms.CURRENT_DATA.COUNTER
 // }
-
-
-
