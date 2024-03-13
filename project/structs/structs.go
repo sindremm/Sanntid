@@ -90,6 +90,7 @@ const (
 	NEWHALLORDER
 	UPDATEELEVATOR
 	CLEARHALLORDER
+	MASTERMSG
 )
 
 type ClearHallorderMsg struct {

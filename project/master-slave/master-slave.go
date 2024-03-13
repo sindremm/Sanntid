@@ -199,6 +199,7 @@ func (ms *MasterSlave) BroadcastSystemData() {
 		}
 		// Send system data to client
 		send_message := structs.TCPMsg{
+			MessageType: structs.MASTERMSG
 			Sender_id: ms.UNIT_ID,
 			Data:      *ms.CURRENT_DATA,
 		}
@@ -407,15 +408,17 @@ func Heartbeat(id string, peers_port int, broadcast_port int) {
 
 // CheckHeartbeat checks if a heartbeat has been received from the leader.
 func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
-	peers_update_channel := make(chan peers.PeerUpdate)
 
+	peers_update_channel := make(chan peers.PeerUpdate)
+	
+	//Receives peer update
 	go peers.Receiver(peers_port, peers_update_channel)
 
 	aliveCheck := make(chan structs.AliveMsg)
 
 	go bcast.Receiver(broadcast_port, aliveCheck)
 
-	//Prints peer update
+	//Prints peer update and adds peer info to current data
 	for {
 		select {
 		case p := <-peers_update_channel:
@@ -452,7 +455,7 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 
 }
 
-// Splits pper string to the unit ID and address
+// Splits peer string to the unit ID and address
 func splitPeerString(peerString string) (elevatorNum int, elevatoraddress string) {
 	splitString := strings.Split(peerString, "-")
 	elevatorNum, err := strconv.Atoi(splitString[0])
