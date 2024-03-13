@@ -173,10 +173,11 @@ func (ms *MasterSlave) MainLoop() {
 			// Receive data from master
 			received_data := <-received_data_channel
 			decoded_data := tcp_interface.DecodeMessage(received_data)
+			decoded_systemData := tcp_interface.DecodeSystemData(decoded_data.Data)
 
 			// Check if the received data is newer then current data, and update current data if so
-			if decoded_data.Data.COUNTER > ms.CURRENT_DATA.COUNTER {
-				ms.CURRENT_DATA = &decoded_data.Data
+			if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
+				ms.CURRENT_DATA = &decoded_systemData
 			}
 		}
 

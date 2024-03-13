@@ -96,13 +96,7 @@ type ClearHallorderMsg struct {
 	clear_floor int
 	clear_direction Direction
 }
-//DELETE SOON
-/*
-type TestTCPMsg struct {
-	SomeMessage string
-	TempOrder   int
-}
-*/
+
 
 // Changes timeout time for Dial. 500 milliseconds = 0.5 second
 var TCP_timeout = 500 * time.Millisecond
