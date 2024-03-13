@@ -92,19 +92,52 @@ func (ms *MasterSlave) MainLoop() {
 
 			// Get all data from channel and insert into SystemData
 
-			loop:
+		loop:
 			for {
 				select {
 				case data := <-received_data_channel:
+
 					decoded_data := tcp_interface.DecodeMessage(data)
 					id := decoded_data.Sender_id
-					ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_data.Data.ELEVATOR_DATA[id]
+					decoded_systemData := tcp_interface.DecodeSystemData(decoded_data.Data)
+
+					if decoded_data.MessageType == structs.NEWCABCALL{
+
+						internal_buttons := decoded_systemData.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY
+						for i := 0; i < structs.N_FLOORS; i++{
+							if internal_buttons[i] == true {
+								ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[i] = true
+							}
+						}
+
+					} else if decoded_data.MessageType == structs.NEWHALLORDER {
+
+						up_buttons := decoded_systemData.UP_BUTTON_ARRAY
+						down_buttons := decoded_systemData.DOWN_BUTTON_ARRAY
+
+						for i := 0; i < structs.N_FLOORS; i++{
+							if up_buttons[i] == true {
+								ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] = true
+							}
+							if down_buttons[i] == true {
+								ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[i] = true
+							}
+						}
+
+					} else if decoded_data.MessageType == structs.UPDATEELEVATOR {
+
+						ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
+
+					} else if decoded_data.MessageType == structs.CLEARHALLORDER {
+						
+					}
+					
 					// fmt.Printf("data: %s", structs.SystemData_to_string(decoded_data.Data))
 				default:
 					break loop
 				}
 			}
-			
+
 			// Update calls, buttons
 			// Update the states of each elevator
 
@@ -117,7 +150,7 @@ func (ms *MasterSlave) MainLoop() {
 			// Send updated SystemData
 			ms.BroadcastSystemData()
 			// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
-			
+
 		} else {
 			// Run if current elevator is slave
 
@@ -134,7 +167,7 @@ func (ms *MasterSlave) MainLoop() {
 		// calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
 		// ms.ELEVATOR_UNIT.PickTarget(calls)
 
-		time.Sleep(5*time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -393,7 +426,7 @@ func UpdateElevatorMap(ms *MasterSlave, newElevatorID string) {
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = true
 }
 
-//Chenges alive status when a peer disconnects
+// Chenges alive status when a peer disconnects
 func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 	for i := range lostElevatorID {
 		elevatorNum, _ := splitPeerString(lostElevatorID[i])
@@ -402,11 +435,11 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 
 }
 
-//Splits pper string to the unit ID and address
-func splitPeerString(peerString string) (elevatorNum int, elevatoraddress string){
+// Splits pper string to the unit ID and address
+func splitPeerString(peerString string) (elevatorNum int, elevatoraddress string) {
 	splitString := strings.Split(peerString, "-")
 	elevatorNum, err := strconv.Atoi(splitString[0])
-	if err!=nil {
+	if err != nil {
 		fmt.Printf("Error with string splitting: %v \n", err)
 	}
 	elevatorAddress := splitString[1]

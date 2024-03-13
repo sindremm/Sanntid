@@ -121,6 +121,17 @@ func DecodeMessage(data []byte) *structs.TCPMsg{
 	return received_message
 }
 
+// Decode []byte sent with TCP into SystemData struct
+func DecodeSystemData(data []byte) *structs.SystemData{
+	var received_message *structs.SystemData
+
+	err := json.Unmarshal([]byte(data), &received_message)
+	if err != nil {
+        log.Fatalf("Error with decoding:  %s", err)
+    }
+	return received_message
+}
+
 // Asks slave_address to connect, then sends a message to slave_address, then reads from slave
 func SendData(client_address string, message []byte) {
 
