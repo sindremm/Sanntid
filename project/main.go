@@ -17,7 +17,7 @@ import (
 func main() {
 
 
-	elevio.Init("localhost:15657", structs.N_FLOORS)
+	elevio.Init("localhost:15680", structs.N_FLOORS)
 
 	singleelev.ResetElevator()
 
