@@ -132,6 +132,16 @@ func DecodeSystemData(data []byte) *structs.SystemData{
 	return received_message
 }
 
+func DecodeHallOrderMsg(data []byte) *structs.ClearHallorderMsg{
+	var received_message *structs.ClearHallorderMsg
+
+	err := json.Unmarshal([]byte(data), &received_message)
+	if err != nil {
+        log.Fatalf("Error with decoding:  %s", err)
+    }
+	return received_message
+}
+
 // Asks slave_address to connect, then sends a message to slave_address, then reads from slave
 func SendData(client_address string, message []byte) {
 

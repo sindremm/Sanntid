@@ -52,7 +52,7 @@ const (
 	FILENAME          = "home/student/Documents/AjananMiaSindre/Sanntid/project/driver-go/master-slave/master-slave.go"
 )
 
-// ###################### Single Elevator ##########################3
+// ###################### Single Elevator ##########################
 type ElevatorState int
 
 const (
@@ -92,6 +92,10 @@ const (
 	CLEARHALLORDER
 )
 
+type ClearHallorderMsg struct {
+	clear_floor int
+	clear_direction Direction
+}
 //DELETE SOON
 /*
 type TestTCPMsg struct {
