@@ -213,64 +213,6 @@ func (e *Elevator) AddElevator(addr string) {
 	e.Conn = conn
 }
 
-// Heartbeat sends a heartbeat message to all other elevators.
-func (e *Elevator) Heartbeat() {
-	heartbeatChannel := make(chan Elevator)
-
-	go bcast.Transmitter(12345, heartbeatChannel)
-
-	for _, elevator := range e.Elevators {
-		heartbeatChannel <- Elevator{ID: e.ID, Timestamp: time.Now().UnixNano()}
-		go elevator.ReceiveHeartbeat(e.Id)
-	}
-}
-
-// ReceiveHeartbeat receives heartbeat messages on the given port
-func (e *Elevator) ReceiveHeartbeat(port int) {
-	heartbeatChannel := make(chan Elevator)
-
-	go bcast.Receiver(port, heartbeatChannel)
-
-	for {
-		select {
-		case hb := <-heartbeatChannel:
-			fmt.Printf("Received heartbeat from %s at %d\n", hb.ID, hb.Timestamp)
-		}
-	}
-}
-
-
-
-// CheckHeartbeat checks if a heartbeat has been received from the leader.
-func CheckHeartbeat(id string, peers_port int, broadcast_port int) {
-	peers_update_channel := make(chan peers.PeerUpdate)
-	go peers.Receiver(peers_port, peers_update_channel)
-
-	aliveCheck := make(chan structs.AliveMsg)
-	go bcast.Receiver(broadcast_port, aliveCheck)
-
-	for {
-		time.Sleep(100 * time.Millisecond) // Check every 100 milliseconds
-		select {
-		case p := <-peers_update_channel:
-			fmt.Printf("Peer update:\n")
-			fmt.Printf("  Peers:    %q\n", p.Peers)
-			fmt.Printf("  New:      %q\n", p.New)
-			fmt.Printf("  Lost:     %q\n", p.Lost)
-			//Updates the ElevatorMap each time a new peer appears
-			if p.New != nil{
-				// UpdateElevatorMap(p.New)
-			}
-		case a := <-aliveCheck:
-			fmt.Printf("Received %#v \n", a)
-		// default:
-		// 	if time.Since(e.LastHeartbeat) > 30*time.Second { // Timeout after 30 seconds
-		// 		fmt.Println("Leader failure detected. Starting new election.")
-		// 		e.StartElection()
-		// 	}
-		}
-	}
-}
 
 
 func (e *Elevator) StartElection() {

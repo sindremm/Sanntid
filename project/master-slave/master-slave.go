@@ -4,8 +4,9 @@ import (
 	"fmt"
 	// "net"
 	// "os/exec"
-	//"strconv"
 	"time"
+	"strconv"
+	"strings"
 
 	"Driver-go/elevio"
 
@@ -13,6 +14,10 @@ import (
 	single "elevator/single-elevator"
 	"elevator/structs"
 	tcp_interface "elevator/tcp-interface"
+
+	"elevator/network/bcast"
+	"elevator/network/localip"
+	"elevator/network/peers"
 )
 
 type MasterSlave struct {
@@ -45,6 +50,14 @@ func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterS
 	// Set corresponding elevator
 	MS.ELEVATOR_UNIT = &elevator
 
+	//IP
+
+	localIP, err := localip.LocalIP()
+	if err != nil {
+		fmt.Printf("Error with localIP \n")
+	}
+	MS.IP_ADDRESS = localIP
+
 	// Set the port where tcp messages are received
 	MS.LISTEN_PORT = port
 
@@ -66,7 +79,12 @@ func (ms *MasterSlave) MainLoop() {
 	// Start reading received data
 	go tcp_interface.ReceiveData(own_address, received_data_channel)
 	
-	
+	// Heartbeat
+	peers_port := 33224
+	broadcast_port := 32244
+	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
+	Heartbeat(input_id, peers_port, broadcast_port)
+	CheckHeartbeat(ms, peers_port, broadcast_port)
 
 	// Main loop of Master-slave
 	for {
@@ -112,12 +130,8 @@ func (ms *MasterSlave) MainLoop() {
 			}
 		}
 		
-
 		calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
-		ms.ELEVATOR_UNIT.PickTarget(calls)
-		
-
-		
+		ms.ELEVATOR_UNIT.PickTarget(calls)		
 	}
 }
 
@@ -326,3 +340,50 @@ var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 // func (ms *MasterSlave) CheckIfReceivedNewTargets() {
 // 	ms.CURRENT_DATA.COUNTER
 // }
+
+// Heartbeat sends a heartbeat message to all other elevators.
+func Heartbeat(id string, peers_port int, broadcast_port int) {
+
+	peer_bool := make(chan bool)
+	go peers.Transmitter(peers_port, id, peer_bool)
+
+	aliveUpdateMsg := make(chan structs.AliveMsg)
+
+	go bcast.Transmitter(broadcast_port, aliveUpdateMsg)
+}
+
+// CheckHeartbeat checks if a heartbeat has been received from the leader.
+func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
+	peers_update_channel := make(chan peers.PeerUpdate)
+
+	go peers.Receiver(peers_port, peers_update_channel)
+
+	aliveCheck := make(chan structs.AliveMsg)
+
+	go bcast.Receiver(broadcast_port, aliveCheck)
+
+	//Prints peer update
+	for {
+		select {
+		case p := <-peers_update_channel:
+			fmt.Printf("Peer update:\n")
+			fmt.Printf("  Peers:    %q\n", p.Peers)
+			fmt.Printf("  New:      %q\n", p.New)
+			fmt.Printf("  Lost:     %q\n", p.Lost)
+			if p.New != "" {
+				UpdateElevatorMap(ms, p.New)
+			}
+		case a := <-aliveCheck:
+			fmt.Printf("Received %#v \n", a)
+		}
+	}
+}
+
+// Adds new address and id number to the ElevatorMap
+func UpdateElevatorMap(ms *MasterSlave, newElevatorID string) {
+
+	splitString := strings.Split(newElevatorID, "-")
+	elevatorNum, _ := strconv.Atoi(splitString[0])
+	elevatorAddress := splitString[1]
+	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
+}
