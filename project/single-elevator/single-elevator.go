@@ -6,7 +6,7 @@ import (
 	// "os"
 	"sync"
 	"time"
-	"json"
+	"encoding/json"
 
 	"Driver-go/elevio"
 
@@ -347,6 +347,10 @@ func (e Elevator) AddHallOrderToMaster(floor int, dir structs.Direction) {
 	master_id := e.ms_unit.MASTER_ID
 	if  master_id != e.ms_unit.UNIT_ID {
 		// Encode data
+		data := structs.ClearHallorderMsg{
+			clear_floor: floor,
+			clear_direction: dir,
+		}
 		
 		json.Marshal(&data)
 
@@ -387,6 +391,10 @@ func (e Elevator) ClearOrderFromMaster(floor int, dir structs.Direction) {
 	unit_id := e.ms_unit.UNIT_ID
 	if  master_id != e.ms_unit.UNIT_ID {
 		// Encode data
+		data := structs.ClearHallorderMsg{
+			clear_floor: floor,
+			clear_direction: dir,
+		}
 		
 		json.Marshal(&data)
 

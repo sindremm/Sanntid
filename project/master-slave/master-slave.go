@@ -199,7 +199,7 @@ func (ms *MasterSlave) BroadcastSystemData() {
 		}
 		// Send system data to client
 		send_message := structs.TCPMsg{
-			MessageType: structs.MASTERMSG
+			MessageType: structs.MASTERMSG,
 			Sender_id: ms.UNIT_ID,
 			Data:      *ms.CURRENT_DATA,
 		}
