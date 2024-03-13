@@ -6,16 +6,16 @@ import (
 	// "Network-go/network/peers"
 	"Driver-go/elevio"
 	"time"
+
 	// "strings"
-	singleelev "elevator/single-elevator"
 	master "elevator/master-slave"
+	singleelev "elevator/single-elevator"
 	"elevator/structs"
 	"flag"
 	"strconv"
 )
 
 func main() {
-
 
 	elevio.Init("localhost:15680", structs.N_FLOORS)
 
@@ -44,22 +44,19 @@ func main() {
 
 	// Create elevator and start main loop
 	// Create master slave
-	master_slave := master.MakeMasterSlave(received_id, port)
+	master_slave := master.MakeMasterSlave(received_id, ":"+port)
 	elevator := singleelev.MakeElevator(received_id, master_slave)
-		
 
 	// Start reading elevator channels
 	go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
 	go elevator.ElevatorLoop()
 
-	
 	// Start master main loop
 	go master_slave.ReadButtons(drv_buttons)
 	go master_slave.MainLoop()
 
-	
 	// Prevent the program from terminating
-	for { 
+	for {
 		time.Sleep(time.Minute)
 	}
 

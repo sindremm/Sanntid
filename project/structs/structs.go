@@ -94,8 +94,8 @@ const (
 )
 
 type ClearHallorderMsg struct {
-	clear_floor int
-	clear_direction Direction
+	Clear_floor int
+	Clear_direction Direction
 }
 
 

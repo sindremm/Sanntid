@@ -81,9 +81,11 @@ func (ms *MasterSlave) MainLoop() {
 	// Start reading received data
 	go tcp_interface.ReceiveData(own_address, received_data_channel)
 
+	
 	// Main loop of Master-slave
 	for {
-		// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
+		fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
+		time.Sleep(time.Second*5)
 		if is_master {
 
 			// Run if current elevator is master
@@ -137,14 +139,14 @@ func (ms *MasterSlave) MainLoop() {
 
 						//Clears The direction button and the internal button of the cleared floor
 						hallOrderMsg := tcp_interface.DecodeHallOrderMsg(decoded_data.Data)
-						clear_floor := hallOrderMsg.clear_floor
-						clear_direction := hallOrderMsg.clear_direction
+						clear_floor := hallOrderMsg.Clear_floor
+						clear_direction := hallOrderMsg.Clear_direction
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[clear_floor] = false
 
-						if clear_direction == UP {
-							ms.CURRENT_DATA.UP_BUTTON_ARRAY[clear_floor]
-						}else if clear_direction == DOWN {
-							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor]
+						if clear_direction == structs.UP {
+							ms.CURRENT_DATA.UP_BUTTON_ARRAY[clear_floor] = false
+						}else if clear_direction == structs.DOWN {
+							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor] = false
 						}
 					}
 					
@@ -153,6 +155,8 @@ func (ms *MasterSlave) MainLoop() {
 					break loop
 				}
 			}
+
+			
 
 			// Update calls, buttons
 			// Update the states of each elevator
@@ -165,6 +169,8 @@ func (ms *MasterSlave) MainLoop() {
 
 			// Send updated SystemData
 			ms.BroadcastSystemData()
+
+			
 			// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
 
 		} else {
@@ -177,14 +183,14 @@ func (ms *MasterSlave) MainLoop() {
 
 			// Check if the received data is newer then current data, and update current data if so
 			if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
-				ms.CURRENT_DATA = &decoded_systemData
+				ms.CURRENT_DATA = decoded_systemData
 			}
 		}
 
 		// calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
 		// ms.ELEVATOR_UNIT.PickTarget(calls)
 
-		time.Sleep(5 * time.Second)
+		// time.Sleep(10 * time.Second)
 	}
 }
 
@@ -197,11 +203,12 @@ func (ms *MasterSlave) BroadcastSystemData() {
 		if client_address == "" {
 			continue
 		}
+		encoded_current_data := tcp_interface.EncodeSystemData(ms.CURRENT_DATA)
 		// Send system data to client
 		send_message := structs.TCPMsg{
 			MessageType: structs.MASTERMSG,
 			Sender_id: ms.UNIT_ID,
-			Data:      *ms.CURRENT_DATA,
+			Data:      encoded_current_data,
 		}
 		encoded_system_data = tcp_interface.EncodeMessage(&send_message)
 		tcp_interface.SendData(client_address, encoded_system_data)
@@ -410,7 +417,7 @@ func Heartbeat(id string, peers_port int, broadcast_port int) {
 func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
 
 	peers_update_channel := make(chan peers.PeerUpdate)
-	
+
 	//Receives peer update
 	go peers.Receiver(peers_port, peers_update_channel)
 
