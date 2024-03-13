@@ -4,9 +4,9 @@ import (
 	"fmt"
 	// "net"
 	// "os/exec"
-	"time"
 	"strconv"
 	"strings"
+	"time"
 
 	"Driver-go/elevio"
 
@@ -68,43 +68,49 @@ func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterS
 }
 
 func (ms *MasterSlave) MainLoop() {
-	
+	// // Heartbeat
+	// peers_port := 33224
+	// broadcast_port := 32244
+	// input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
+	// Heartbeat(input_id, peers_port, broadcast_port)
+
+	// go CheckHeartbeat(ms, peers_port, broadcast_port)
+
 	// Check if this elevator is Master
 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 
 	// Start listening to received data
 	received_data_channel := make(chan []byte)
 	own_address := ms.IP_ADDRESS + ms.LISTEN_PORT
-	
+
 	// Start reading received data
 	go tcp_interface.ReceiveData(own_address, received_data_channel)
-	
-	// Heartbeat
-	peers_port := 33224
-	broadcast_port := 32244
-	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
-	Heartbeat(input_id, peers_port, broadcast_port)
-	CheckHeartbeat(ms, peers_port, broadcast_port)
 
 	// Main loop of Master-slave
 	for {
 		// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
 		if is_master {
-			time.Sleep(time.Second)
-			// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
-
 
 			// Run if current elevator is master
 
 			// TODO: Update SystemData:
 
 			// Get all data from channel and insert into SystemData
-			fmt.Printf("Hello\n")
-			for data := range received_data_channel {
-				decoded_data := tcp_interface.DecodeMessage(data)
-				id := decoded_data.Sender_id
-				ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_data.Data.ELEVATOR_DATA[id]
+
+			loop:
+			for {
+				select {
+				case data := <-received_data_channel:
+					fmt.Printf("Hello\n")
+					decoded_data := tcp_interface.DecodeMessage(data)
+					id := decoded_data.Sender_id
+					ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_data.Data.ELEVATOR_DATA[id]
+					fmt.Printf("data: %v", data)
+				default:
+					break loop
+				}
 			}
+			
 			// Update calls, buttons
 			// Update the states of each elevator
 
@@ -116,7 +122,8 @@ func (ms *MasterSlave) MainLoop() {
 
 			// Send updated SystemData
 			ms.BroadcastSystemData()
-
+			fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
+			
 		} else {
 			// Run if current elevator is slave
 
@@ -129,9 +136,11 @@ func (ms *MasterSlave) MainLoop() {
 				ms.CURRENT_DATA = &decoded_data.Data
 			}
 		}
-		
+
 		calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
-		ms.ELEVATOR_UNIT.PickTarget(calls)		
+		ms.ELEVATOR_UNIT.PickTarget(calls)
+
+		time.Sleep(5*time.Second)
 	}
 }
 
@@ -198,14 +207,14 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 
 	// Map to convert from map of elevators to array of elevators
 	key_to_int_map := map[string]int{
-		"one":   1,
-		"two":   2,
-		"three": 3,
+		"one":   0,
+		"two":   1,
+		"three": 2,
 	}
 
 	// Update values in ELEVATOR_TARGETS of SystemData
 	for k := range movement_map {
-		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]-1].ELEVATOR_TARGETS = movement_map[k]
+		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]].ELEVATOR_TARGETS = movement_map[k]
 	}
 }
 

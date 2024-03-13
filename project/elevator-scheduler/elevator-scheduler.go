@@ -30,9 +30,16 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 	new_argument.HallRequests = requests
 
 	// Assemble states
-	direction_string := [3]string{"up", "down", "stop"}
+	direction_strings := [3]string{"up", "down", "stop"}
+	elevator_strings := [structs.N_ELEVATORS]string{"one", "two", "three"}
 	new_states := make(map[string]singleElevatorState)
+
 	for i := 0; i < len(*systemData.ELEVATOR_DATA); i++ {
+
+		// Don't take elevator into account if not alive
+		if !systemData.ELEVATOR_DATA[i].ALIVE {
+			continue
+		}
 
 		new_state := singleElevatorState{}
 
@@ -40,17 +47,12 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 
 		new_state.Behaviour = state_to_behaviour(state)
 		new_state.Floor = state.CURRENT_FLOOR
-		new_state.Direction = direction_string[state.DIRECTION]
+		new_state.Direction = direction_strings[state.DIRECTION]
 		new_state.CabRequests = (*systemData.ELEVATOR_DATA)[i].INTERNAL_BUTTON_ARRAY
 
 		// Set the values for the corresponding elevator
-		if i == 0 {
-			new_states["one"] = new_state
-		} else if i == 1 {
-			new_states["two"] = new_state
-		} else if i == 2 {
-			new_states["three"] = new_state
-		}
+		new_states[elevator_strings[i]] = new_state
+
 	}
 
 	// Set the new states
@@ -92,7 +94,7 @@ type MessageStruct struct {
 
 // Return the movements of the elevator
 func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][structs.N_FLOORS][2]bool) {
-	command := "./hall_request_assigner"
+	command := "./elevator-scheduler/hall_request_assigner"
 
 	// Create json string from the system data
 	new_struct := assembleArgument(systemData)

@@ -9,7 +9,6 @@ import (
 	// "strings"
 	singleelev "elevator/single-elevator"
 	master "elevator/master-slave"
-	singleelev "elevator/single-elevator"
 	"elevator/structs"
 	"flag"
 	"strconv"
