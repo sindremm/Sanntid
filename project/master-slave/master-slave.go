@@ -373,6 +373,9 @@ func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
 			if p.New != "" {
 				UpdateElevatorMap(ms, p.New)
 			}
+			if p.Lost != nil {
+				UpdateLostConnection(ms, p.Lost)
+			}
 		case a := <-aliveCheck:
 			fmt.Printf("Received %#v \n", a)
 		}
@@ -382,8 +385,25 @@ func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
 // Adds new address and id number to the ElevatorMap
 func UpdateElevatorMap(ms *MasterSlave, newElevatorID string) {
 
-	splitString := strings.Split(newElevatorID, "-")
-	elevatorNum, _ := strconv.Atoi(splitString[0])
-	elevatorAddress := splitString[1]
+	elevatorNum, elevatorAddress := splitPeerString(newElevatorID)
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
+	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = true
+}
+
+
+func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
+	for i := range lostElevatorID {
+		elevatorNum, _ := splitPeerString(lostElevatorID[i])
+		ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = false
+	}
+
+}
+func splitPeerString(peerString string) (elevatorNum int, elevatoraddress string){
+	splitString := strings.Split(peerString, "-")
+	elevatorNum, err := strconv.Atoi(splitString[0])
+	if err!=nil {
+		fmt.Printf("Error with string splitting: %v \n", err)
+	}
+	elevatorAddress := splitString[1]
+	return elevatorNum, elevatorAddress
 }
