@@ -390,7 +390,7 @@ func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
 	}
 }
 
-// Adds new address and id number to the ElevatorMap
+// Chenges alive status and adds address when a peer connects
 func UpdateElevatorMap(ms *MasterSlave, newElevatorID string) {
 
 	elevatorNum, elevatorAddress := splitPeerString(newElevatorID)
@@ -398,7 +398,7 @@ func UpdateElevatorMap(ms *MasterSlave, newElevatorID string) {
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = true
 }
 
-
+//Chenges alive status when a peer disconnects
 func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 	for i := range lostElevatorID {
 		elevatorNum, _ := splitPeerString(lostElevatorID[i])
@@ -406,6 +406,8 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 	}
 
 }
+
+//Splits pper string to the unit ID and address
 func splitPeerString(peerString string) (elevatorNum int, elevatoraddress string){
 	splitString := strings.Split(peerString, "-")
 	elevatorNum, err := strconv.Atoi(splitString[0])
