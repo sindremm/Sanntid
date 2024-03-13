@@ -6,12 +6,13 @@ import (
 	// "os"
 	"sync"
 	"time"
+	"json"
 
 	"Driver-go/elevio"
 
-	"elevator/structs"
 	master_slave "elevator/master-slave"
-	// tcp_interface "elevator/tcp-interface"
+	"elevator/structs"
+	tcp_interface "elevator/tcp-interface"
 )
 
 //TODO: Remove unused code
@@ -40,9 +41,8 @@ type Elevator struct {
 
 	// Variable for keeping track of when interrupt ends
 	interrupt_end *time.Time
-	master_unit *master_slave.MasterSlave
+	ms_unit   *master_slave.MasterSlave
 }
-
 
 func MakeElevator(elevatorNumber int, master *master_slave.MasterSlave) Elevator {
 	// Set state to idle
@@ -57,15 +57,12 @@ func MakeElevator(elevatorNumber int, master *master_slave.MasterSlave) Elevator
 	// Starting direction
 	starting_direction := structs.STILL
 
-
 	// Pointer values
 	floor_number := -1
 	is_obstructed := false
 	is_stopped := false
 
 	start_time := time.Now()
-
-	
 
 	return Elevator{
 		&elevio.ButtonEvent{},
@@ -87,15 +84,13 @@ func (e Elevator) ElevatorLoop() {
 		*e.internal_state = structs.MOVING
 	}
 
-	
 	for {
 		// Check for stop-button press
-		
+
 		if *e.is_stopped {
 			// fmt.Print("Stop\n")
 			*e.internal_state = structs.STOPPED
 		}
-
 
 		// fmt.Printf("Internal_state: %v", e.internal_state)
 		// fmt.Printf("Stopped: %t \n", *e.is_stopped)
@@ -126,7 +121,6 @@ func (e Elevator) ElevatorLoop() {
 				//TODO: implement target selection
 				// e.PickTarget()
 			}
-			
 
 		case structs.MOVING:
 
@@ -174,25 +168,24 @@ func (e Elevator) ClearOrdersAtFloor() {
 	// if e.internal_button_array[*e.at_floor] || e.up_button_array[*e.at_floor] || e.down_button_array[*e.at_floor] {
 	// 	// fmt.Printf("ClearOrdersAtFloor\n")
 
-
 	//TODO: Handle Clear orders at floor
-		
-		// Open door
-		e.TransitionToOpenDoor()
 
-		if *e.target_floor == *e.at_floor {
-			*e.target_floor = -1;
-		}
+	// Open door
+	e.TransitionToOpenDoor()
 
-		// // Remove all orders on floor
-		// e.internal_button_array[*e.at_floor] = false
-		// e.up_button_array[*e.at_floor] = false
-		// e.down_button_array[*e.at_floor] = false
+	if *e.target_floor == *e.at_floor {
+		*e.target_floor = -1
+	}
 
-		// Reset all lights
-		elevio.SetButtonLamp(0, *e.at_floor, false)
-		elevio.SetButtonLamp(1, *e.at_floor, false)
-		elevio.SetButtonLamp(2, *e.at_floor, false)
+	// // Remove all orders on floor
+	// e.internal_button_array[*e.at_floor] = false
+	// e.up_button_array[*e.at_floor] = false
+	// e.down_button_array[*e.at_floor] = false
+
+	// Reset all lights
+	elevio.SetButtonLamp(0, *e.at_floor, false)
+	elevio.SetButtonLamp(1, *e.at_floor, false)
+	elevio.SetButtonLamp(2, *e.at_floor, false)
 	// }
 
 }
@@ -206,8 +199,7 @@ func (e Elevator) PickTarget(calls [structs.N_FLOORS][2]bool) {
 	// This code can be reworked to better adhere to the DRY-principle
 	// Check floors above
 
-
-	for i := 1; i <= 3; i++{
+	for i := 1; i <= 3; i++ {
 		if *e.at_floor+i < 4 {
 
 			// Check floors above
@@ -243,10 +235,6 @@ func (e Elevator) PickTarget(calls [structs.N_FLOORS][2]bool) {
 	*e.target_floor = new_target
 }
 
-
-
-
-
 func (e Elevator) Visit_floor() {
 
 	// Run when no floor at initialization
@@ -267,11 +255,10 @@ func (e Elevator) Visit_floor() {
 		// Transition to OpenDoor state
 		e.TransitionToOpenDoor()
 
-
 		// TODO: Figure out logic when several buttons are pressed at target
 		elevio.SetButtonLamp(0, *e.at_floor, false)
 		elevio.SetButtonLamp(1, *e.at_floor, false)
-		elevio.SetButtonLamp(2, *e.at_floor, false)	
+		elevio.SetButtonLamp(2, *e.at_floor, false)
 
 	}
 }
@@ -321,7 +308,6 @@ func (e Elevator) Stop() {
 
 	elevator_stop := *e.is_stopped
 
-	
 	elevio.SetStopLamp(true)
 	elevio.SetMotorDirection(elevio.MD_Stop)
 
@@ -337,11 +323,100 @@ func (e Elevator) RemoveOrdersAtFloor(floor int, direction structs.Direction) {
 	//TODO: Fill in function. May have to be placed in Master-Slave or elsewhere
 }
 
+// Send new cab orders to master
+func (e Elevator) AddCabOrderToMaster(floor int) {
+	master_id := e.ms_unit.MASTER_ID
+	unit_id := e.ms_unit.UNIT_ID
+	if  master_id !=  unit_id {
 
-func (e Elevator) SendUpdateToMaster(msgType structs.TCPMsg, message []byte) {
-	select {
-		case msgType == structs.
+		// Encode data
+		data := [structs.N_FLOORs]bool{false, false, false, false}
+		data[floor] = true
+		json.Marshal(&data)
+
+		// Send data to master
+		e._message_data_to_master(data, structs.NEWCABCALL)
 	}
+
+	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id].INTERNAL_BUTTON_ARRAY[floor] = true
+
+	
+}
+
+func (e Elevator) AddHallOrderToMaster(floor int, dir structs.Direction) {
+	master_id := e.ms_unit.MASTER_ID
+	if  master_id != e.ms_unit.UNIT_ID {
+		// Encode data
+		
+		json.Marshal(&data)
+
+		e._message_data_to_master(data, structs.NEWHALLORDER)
+	}
+	
+
+	// Set cab order
+	if dir == structs.UP {
+		e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[floor] = true
+	} else if dir == structs.DOWN {
+		e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = true
+	}
+}
+
+func (e Elevator) AddElevatorDataToMaster() {
+	master_id := e.ms_unit.MASTER_ID
+	unit_id := e.ms_unit.UNIT_ID
+
+	data := e.ms_unit.CURRENT_DATA
+
+	if  master_id !=  unit_id {
+
+		// Encode data
+		
+		tcp_interface.EncodeMessage(data)
+
+		// Send data to master
+		e._message_data_to_master(data, structs.NEWCABCALL)
+	}
+
+	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id] = data
+
+}
+
+func (e Elevator) ClearOrderFromMaster(floor int, dir structs.Direction) {
+	master_id := e.ms_unit.MASTER_ID
+	unit_id := e.ms_unit.UNIT_ID
+	if  master_id != e.ms_unit.UNIT_ID {
+		// Encode data
+		
+		json.Marshal(&data)
+
+		e._message_data_to_master(data, structs.NEWHALLORDER)
+	}
+	
+
+	// Clear internal order
+	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id].internal_button_array[floor] = false
+	
+	// Clear order in the given direction
+	if dir == structs.UP {
+		e.ms_unit.CURRENT_DATA.up_button_array[floor] = false
+	} else if dir == structs.DOWN {
+		e.ms_unit.CURRENT_DATA.down_button_array[floor] = false
+	}
+}
+
+// Send a tcp-message with data to the master unit
+func (e Elevator) _message_data_to_master(data []bool, msg_type structs.MessageType) {
+	master_id := e.ms_unit.MASTER_ID
+		// Construct message
+		message := structs.TCPMsg{
+			MessageType: msg_type,
+			Sender_id: e.ms_unit.UNIT_ID,
+			Data: data,
+		}
+
+		// Send message to master
+		tcp_interface.SendData(e.ms_unit.ELEVATOR_DATA[master_id].ADDRESS, message)
 }
 
 
@@ -352,7 +427,7 @@ func ResetElevator() {
 
 	// Turn off stop lamb
 	elevio.SetStopLamp(false)
-	
+
 	// Turn of open door lamp
 	elevio.SetDoorOpenLamp(false)
 
@@ -363,5 +438,3 @@ func ResetElevator() {
 		}
 	}
 }
-
-
