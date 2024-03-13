@@ -110,6 +110,14 @@ func EncodeMessage(s *structs.TCPMsg) ([]byte) {
 	return b
 }
 
+func EncodeSystemData (s *structs.SystemData) ([]byte) {
+	b, err := json.Marshal(s)
+	if err != nil {
+		fmt.Print("Error with Marshal \n")
+	}
+	return b
+}
+
 // Decode []byte sent with TCP into SystemData struct
 func DecodeMessage(data []byte) *structs.TCPMsg{
 	var received_message *structs.TCPMsg

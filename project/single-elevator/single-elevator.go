@@ -338,11 +338,11 @@ func (e Elevator) RemoveOrdersAtFloor(floor int, direction structs.Direction) {
 }
 
 
-func (e Elevator) SendUpdateToMaster(msgType structs.TCPMsg, message []byte) {
-	select {
-		case msgType == structs.
-	}
-}
+// func (e Elevator) SendUpdateToMaster(msgType structs.TCPMsg, message []byte) {
+// 	select {
+// 		case msgType == structs.
+// 	}
+// }
 
 
 // Reset all elevator elements
