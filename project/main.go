@@ -5,7 +5,7 @@ import (
 	// "Network-go/network/localip"
 	// "Network-go/network/peers"
 	"Driver-go/elevio"
-	"time"
+	// "time"
 	// "strings"
 	singleelev "elevator/single-elevator"
 	master "elevator/master-slave"
@@ -13,6 +13,8 @@ import (
 )
 
 var addresses [4]string;
+
+
 
 
 
@@ -52,11 +54,13 @@ func main() {
 	go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
 
 	// Start master main loop
-	go master_slave.MainLoop()
+	master_slave.ReadButtons(drv_buttons)
+	master_slave.MainLoop()
+	
 
 	// Prevent the program from terminating
-	for { 
-		time.Sleep(time.Minute)
-	}
+	// for { 
+	// 	time.Sleep(time.Minute)
+	// }
 
 }

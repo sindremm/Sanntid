@@ -1,7 +1,7 @@
 package master_slave
 
 import  (
-	// "fmt"
+	"fmt"
 	// "net"
 	// "os/exec"
 	//"strconv"
@@ -17,9 +17,9 @@ import  (
 
 type MasterSlave struct {
 	CURRENT_DATA *structs.SystemData
-	IP_ADDRESS string
 	UNIT_ID int
-	ELEVATOR_UNIT single.Elevator
+	ELEVATOR_UNIT *single.Elevator
+	IP_ADDRESS string
 	LISTEN_PORT string
 }
 
@@ -43,7 +43,7 @@ func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterS
 	MS.UNIT_ID = UnitID
 	
 	// Set corresponding elevator
-	MS.ELEVATOR_UNIT = elevator
+	MS.ELEVATOR_UNIT = &elevator
 
 	// Set the port where tcp messages are received
 	MS.LISTEN_PORT = port
@@ -60,9 +60,14 @@ func (ms *MasterSlave) MainLoop() {
 	// Check if this elevator is Master
 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 
+	// Start listening to received data
+	received_data_channel := make(chan []byte)
+	own_address := ms.IP_ADDRESS + ms.LISTEN_PORT 
+	tcp_interface.ReceiveData(own_address, received_data_channel)
 
 	// Main loop of Master-slave
 	for {
+		fmt.Printf("%v", ms.CURRENT_DATA)
 		if is_master {
 			// Run if current elevator is master
 
@@ -71,6 +76,7 @@ func (ms *MasterSlave) MainLoop() {
 			// Update the states of each elevator
 			// UpdateElevatorTargets() (Only run when new calls, or update in state of elevator)
 			// Increase counter
+			ms.UpdateElevatorTargets()
 
 
 			// Send updated SystemData
@@ -82,37 +88,40 @@ func (ms *MasterSlave) MainLoop() {
 			// Run if current elevator is slave
 
 			// Receive data from master
-			own_address := ms.IP_ADDRESS + ms.LISTEN_PORT 
-			received_data := new(structs.SystemData)
-			tcp_interface.ReceiveSystemData(own_address, received_data)
+			received_data := <- received_data_channel
+			decoded_data := tcp_interface.DecodeSystemData(received_data)
+			
 
 			// Check if the received data is newer then current data, and update current data if so 
-			if received_data.COUNTER > ms.CURRENT_DATA.COUNTER {
-				ms.CURRENT_DATA = received_data
+			if decoded_data.COUNTER > ms.CURRENT_DATA.COUNTER {
+				ms.CURRENT_DATA = decoded_data
 			}
-
-			calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
-			ms.ELEVATOR_UNIT.PickTarget(calls)
-			
 		}
+
+		calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
+		ms.ELEVATOR_UNIT.PickTarget(calls)
 	}
 
 }
 
 func (ms *MasterSlave) BroadcastSystemData() {
 	// Send system data to each elevator
+	var encoded_system_data []byte
 	for i := 0; i < structs.N_ELEVATORS; i++ {
 		// Find corresponding address of elevator client
 		client_address := ms.CURRENT_DATA.ELEVATOR_DATA[i].ADDRESS
+		if client_address == "" {
+			continue
+		}
 		// Send system data to client
-		tcp_interface.SendSystemData(client_address, ms.CURRENT_DATA)
+		encoded_system_data = tcp_interface.EncodeSystemData(ms.CURRENT_DATA)
+		tcp_interface.SendData(client_address, encoded_system_data)
 	}
 	
 }
 
 // Read from the channels and put data into variables
 func (ms *MasterSlave) ReadButtons(button_order chan elevio.ButtonEvent) {
-
 	for {
 		select {
 		case bo := <-button_order:
@@ -140,10 +149,13 @@ func (ms *MasterSlave) AddOrderToSystemDAta(floor int, button elevio.ButtonType)
 	switch button {
 	case 0:
 		ms.CURRENT_DATA.UP_BUTTON_ARRAY[floor] = true
+		elevio.SetButtonLamp(elevio.BT_HallUp, floor, true);
 	case 1:
 		ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = true
+		elevio.SetButtonLamp(elevio.BT_HallDown, floor, true);
 	case 2:
 		ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].INTERNAL_BUTTON_ARRAY[floor] = true
+		elevio.SetButtonLamp(elevio.BT_Cab, floor, true);
 	}
 }
 
@@ -161,10 +173,13 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 	
 	// Update values in ELEVATOR_TARGETS of SystemData
 	for k := range movement_map {
-		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]].ELEVATOR_TARGETS = movement_map[k];
+		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k] - 1].ELEVATOR_TARGETS = movement_map[k];
 	}
 }
 
+func (ms *MasterSlave) RequestSlaveData(data_string string) {
+
+}
 
 // // HandleOrderFromMaster is a method on the MasterSlave struct that processes an order from the master.
 // func (ms *MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error {

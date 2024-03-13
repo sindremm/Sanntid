@@ -126,10 +126,8 @@ func DecodeSystemData(data []byte) *structs.SystemData{
 
 
 
-
-
 // Asks slave_address to connect, then sends a message to slave_address, then reads from slave
-func SendSystemData(client_address string, TCPmessage *structs.SystemData) (){
+func SendData(client_address string, message []byte) (){
 
 	// Dial client to establish connection
 	conn, err := net.DialTimeout("tcp", client_address, structs.TCP_timeout)
@@ -141,11 +139,8 @@ func SendSystemData(client_address string, TCPmessage *structs.SystemData) (){
 	//TODO: ADD somwhere in the code
 	// defer conn.Close()
 
-	//Encode systemdata and add zero termination
-	msg := append(EncodeSystemData(TCPmessage), "\000"...)
-
 	// Send data
-	_, err = conn.Write(msg)
+	_, err = conn.Write(message)
 	if err != nil {
 		fmt.Printf("Failed to send message %v\n", err)
 		return
@@ -157,7 +152,7 @@ func SendSystemData(client_address string, TCPmessage *structs.SystemData) (){
 
 
 // Listens and accepts connection on our_port, then sends a message back
-func ReceiveSystemData(listen_address string, write_data *structs.SystemData) (structs.SystemData) {
+func ReceiveData(listen_address string, reading chan []byte) {
 
 	// Listen for connection on specified port 
 	l, err := net.Listen("tcp", listen_address)
@@ -173,7 +168,9 @@ func ReceiveSystemData(listen_address string, write_data *structs.SystemData) (s
 		if err != nil {
 			fmt.Printf("Failed to accept message %v\n", err)
 		}
+
 		defer conn.Close()
+		
 		buffer := make([]byte, 2048)
 
 		//buffer[:n] is message from client
@@ -182,7 +179,7 @@ func ReceiveSystemData(listen_address string, write_data *structs.SystemData) (s
 			fmt.Printf("Failed to read message %v\n", err)
 		} else {
 			// Return received data
-		write_data = DecodeSystemData(buffer[:n])
+		reading <- buffer[:n]
 		}
 	}
 }
@@ -192,7 +189,7 @@ func ReceiveSystemData(listen_address string, write_data *structs.SystemData) (s
 func SlaveSendInfoToMaster(master_address string, slave_message *structs.SystemData) {
 	//Encode systemdata and add zero termination
 
-	SendSystemData(master_address, slave_message)
+	// SendData(master_address, slave_message)
 	
 }
 
