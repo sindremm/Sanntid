@@ -3,17 +3,16 @@ package interfaceTCP
 import (
 	"flag"
 	"fmt"
-	"net"
 	"log"
+	"net"
 
-	"strings"
 	"elevator/network/localip"
 	"elevator/structs"
 	"encoding/json"
-	"strconv"
+	//"strconv"
+	//"strings"
 	//"time"
 )
-
 
 // Added comment
 // var our_port = "10005"
@@ -23,8 +22,6 @@ import (
 // var slave_port = "10005"
 
 // var slave_address = slave_IP + ":" + slave_port
-
-
 
 func main() {
 
@@ -91,7 +88,7 @@ func updateLife(id string, peers_port int, broadcast_port int) {
 	go bcast.Transmitter(broadcast_port, aliveUpdateMsg)
 
 	//Uncomment if we want updates every second
-	
+
 	// go func() {
 	// 	helloMsg := AliveMsg{"Alive from ", id, 0}
 	// 	for {
@@ -105,29 +102,27 @@ func updateLife(id string, peers_port int, broadcast_port int) {
 */
 
 // Encodes systemData struct to []byte to be sent by TCP
-func EncodeSystemData(s *structs.SystemData) ([]byte){
+func EncodeSystemData(s *structs.SystemData) []byte {
 	b, err := json.Marshal(s)
-	if err!= nil {
+	if err != nil {
 		fmt.Print("Error with Marshal \n")
 	}
 	return b
 }
 
 // Decode []byte sent with TCP into SystemData struct
-func DecodeSystemData(data []byte) *structs.SystemData{
+func DecodeSystemData(data []byte) *structs.SystemData {
 	var systemData *structs.SystemData
 
 	err := json.Unmarshal([]byte(data), &systemData)
 	if err != nil {
-        log.Fatalf("Error with decoding:  %s", err)
-    }
+		log.Fatalf("Error with decoding:  %s", err)
+	}
 	return systemData
 }
 
-
-
 // Asks slave_address to connect, then sends a message to slave_address, then reads from slave
-func SendData(client_address string, message []byte) (){
+func SendData(client_address string, message []byte) {
 
 	// Dial client to establish connection
 	conn, err := net.DialTimeout("tcp", client_address, structs.TCP_timeout)
@@ -148,13 +143,10 @@ func SendData(client_address string, message []byte) (){
 	}
 }
 
-
-
-
 // Listens and accepts connection on our_port, then sends a message back
 func ReceiveData(listen_address string, reading chan []byte) {
 
-	// Listen for connection on specified port 
+	// Listen for connection on specified port
 	l, err := net.Listen("tcp", listen_address)
 	if err != nil {
 		fmt.Printf("Failed to listen message %v\n", err)
@@ -170,7 +162,7 @@ func ReceiveData(listen_address string, reading chan []byte) {
 		}
 
 		defer conn.Close()
-		
+
 		buffer := make([]byte, 2048)
 
 		//buffer[:n] is message from client
@@ -179,25 +171,15 @@ func ReceiveData(listen_address string, reading chan []byte) {
 			fmt.Printf("Failed to read message %v\n", err)
 		} else {
 			// Return received data
-		reading <- buffer[:n]
+			reading <- buffer[:n]
 		}
 	}
 }
-
 
 // The slave sends it's info to the master unit
 func SlaveSendInfoToMaster(master_address string, slave_message *structs.SystemData) {
 	//Encode systemdata and add zero termination
 
 	// SendData(master_address, slave_message)
-	
-}
 
-//Adds new address and id number to the ElevatorMap
-func UpdateElevatorMap(SystemData *structs.SystemData, newElevatorID string) {
-
-	splitString := strings.Split(newElevatorID, "-")
-	elevatorNum, _ := strconv.Atoi(splitString[0])
-	elevatorAddress := splitString[1]
-	SystemData.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
 }

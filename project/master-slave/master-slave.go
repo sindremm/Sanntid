@@ -1,49 +1,61 @@
 package master_slave
 
-import  (
+import (
 	"fmt"
 	// "net"
 	// "os/exec"
-	//"strconv"
-	// "time"
-	
+	"strconv"
+	"strings"
+
 	"Driver-go/elevio"
 
-	"elevator/structs"
-	tcp_interface "elevator/tcp-interface"
 	scheduler "elevator/elevator-scheduler"
 	single "elevator/single-elevator"
+	"elevator/structs"
+	tcp_interface "elevator/tcp-interface"
+
+	"elevator/network/bcast"
+	"elevator/network/localip"
+	"elevator/network/peers"
 )
 
 type MasterSlave struct {
-	CURRENT_DATA *structs.SystemData
-	UNIT_ID int
+	CURRENT_DATA  *structs.SystemData
+	UNIT_ID       int
 	ELEVATOR_UNIT *single.Elevator
-	IP_ADDRESS string
-	LISTEN_PORT string
+	IP_ADDRESS    string
+	LISTEN_PORT   string
 }
 
 // Create a MasterSlave
 func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterSlave {
 	MS := new(MasterSlave)
-	
+
 	// Initialize current data
 	SD := structs.SystemData{
-        MASTER_ID: 0,
-        UP_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
-        DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
-        ELEVATOR_DATA: &([structs.N_ELEVATORS]structs.ElevatorData{}),
-        COUNTER: 0,
-    }
+		MASTER_ID:         0,
+		UP_BUTTON_ARRAY:   &([structs.N_FLOORS]bool{}),
+		DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
+		ELEVATOR_DATA:     &([structs.N_ELEVATORS]structs.ElevatorData{}),
+		COUNTER:           0,
+	}
 
 	// Set data
 	MS.CURRENT_DATA = &SD
-	
+
 	// Set identifying ID of unit
 	MS.UNIT_ID = UnitID
-	
+
 	// Set corresponding elevator
 	MS.ELEVATOR_UNIT = &elevator
+
+	//IP
+
+	localIP, err := localip.LocalIP()
+	if err != nil {
+		fmt.Printf("Error with localIP \n")
+	}
+	MS.IP_ADDRESS = localIP
 
 	// Set the port where tcp messages are received
 	MS.LISTEN_PORT = port
@@ -54,52 +66,49 @@ func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterS
 	return MS
 }
 
-
-
 func (ms *MasterSlave) MainLoop() {
 	// Check if this elevator is Master
 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 
 	// Start listening to received data
 	received_data_channel := make(chan []byte)
-	own_address := ms.IP_ADDRESS + ms.LISTEN_PORT 
+	own_address := ms.IP_ADDRESS + ms.LISTEN_PORT
 	tcp_interface.ReceiveData(own_address, received_data_channel)
+	peers_port := 33224
+	broadcast_port := 32244
+	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
+	Heartbeat(input_id, peers_port, broadcast_port)
+	CheckHeartbeat(ms, peers_port, broadcast_port)
+	 //Main loop of Master-slave
+	 for {
+	 	fmt.Printf("%v", ms.CURRENT_DATA)
+	 	if is_master {
+	 		// Run if current elevator is master
+ 		// TODO: Update SystemData:
+ 		// Update calls, buttons
+ 		// Update the states of each elevator
+ 		// UpdateElevatorTargets() (Only run when new calls, or update in state of elevator)
+ 		// Increase counter
+ 		ms.UpdateElevatorTargets()
 
-	// Main loop of Master-slave
-	for {
-		fmt.Printf("%v", ms.CURRENT_DATA)
-		if is_master {
-			// Run if current elevator is master
+ 		// Send updated SystemData
+ 		ms.BroadcastSystemData()
 
-			// TODO: Update SystemData:
-			// Update calls, buttons
-			// Update the states of each elevator
-			// UpdateElevatorTargets() (Only run when new calls, or update in state of elevator)
-			// Increase counter
-			ms.UpdateElevatorTargets()
+ 	} else {
+ 		// Run if current elevator is slave
 
+ 		// Receive data from master
+ 		received_data := <-received_data_channel
+ 		decoded_data := tcp_interface.DecodeSystemData(received_data)
 
-			// Send updated SystemData
-			ms.BroadcastSystemData()
-			
-		
-		
-		} else {
-			// Run if current elevator is slave
+ 		// Check if the received data is newer then current data, and update current data if so
+ 		if decoded_data.COUNTER > ms.CURRENT_DATA.COUNTER {
+ 			ms.CURRENT_DATA = decoded_data
+ 		}
+ 	}
 
-			// Receive data from master
-			received_data := <- received_data_channel
-			decoded_data := tcp_interface.DecodeSystemData(received_data)
-			
-
-			// Check if the received data is newer then current data, and update current data if so 
-			if decoded_data.COUNTER > ms.CURRENT_DATA.COUNTER {
-				ms.CURRENT_DATA = decoded_data
-			}
-		}
-
-		calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
-		ms.ELEVATOR_UNIT.PickTarget(calls)
+	calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
+	ms.ELEVATOR_UNIT.PickTarget(calls)
 	}
 
 }
@@ -117,7 +126,7 @@ func (ms *MasterSlave) BroadcastSystemData() {
 		encoded_system_data = tcp_interface.EncodeSystemData(ms.CURRENT_DATA)
 		tcp_interface.SendData(client_address, encoded_system_data)
 	}
-	
+
 }
 
 // Read from the channels and put data into variables
@@ -134,8 +143,6 @@ func (ms *MasterSlave) ReadButtons(button_order chan elevio.ButtonEvent) {
 	}
 }
 
-
-
 // Convert order to readable format
 func (ms *MasterSlave) InterpretOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType) {
 	order_floor := button_order.Floor
@@ -149,16 +156,15 @@ func (ms *MasterSlave) AddOrderToSystemDAta(floor int, button elevio.ButtonType)
 	switch button {
 	case 0:
 		ms.CURRENT_DATA.UP_BUTTON_ARRAY[floor] = true
-		elevio.SetButtonLamp(elevio.BT_HallUp, floor, true);
+		elevio.SetButtonLamp(elevio.BT_HallUp, floor, true)
 	case 1:
 		ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = true
-		elevio.SetButtonLamp(elevio.BT_HallDown, floor, true);
+		elevio.SetButtonLamp(elevio.BT_HallDown, floor, true)
 	case 2:
 		ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].INTERNAL_BUTTON_ARRAY[floor] = true
-		elevio.SetButtonLamp(elevio.BT_Cab, floor, true);
+		elevio.SetButtonLamp(elevio.BT_Cab, floor, true)
 	}
 }
-
 
 func (ms *MasterSlave) UpdateElevatorTargets() {
 	// Get new elevator targets
@@ -166,14 +172,14 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 
 	// Map to convert from map of elevators to array of elevators
 	key_to_int_map := map[string]int{
-		"one": 1,
-	 	"two": 2, 
+		"one":   1,
+		"two":   2,
 		"three": 3,
 	}
-	
+
 	// Update values in ELEVATOR_TARGETS of SystemData
 	for k := range movement_map {
-		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k] - 1].ELEVATOR_TARGETS = movement_map[k];
+		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]-1].ELEVATOR_TARGETS = movement_map[k]
 	}
 }
 
@@ -214,7 +220,6 @@ func (ms *MasterSlave) RequestSlaveData(data_string string) {
 // 	fmt.Println("Master is dead, switching to backup")
 // }
 
-
 var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 
 // func StartMasterSlave(leader *MasterSlave) {
@@ -226,7 +231,6 @@ var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 // 	counter := 0
 
 // 	ms := &MasterSlave{}
-
 
 // 	filename := "/home/student/Documents/AjananMiaSindre/Sanntid/exercise_4/main.go"
 
@@ -276,7 +280,6 @@ var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 // 	}
 // }
 
-
 // // sendSystemData is a function that sends SystemData over a TCP connection.
 // // It takes a net.Conn object representing the connection and a pointer to the SystemData object to be sent.
 // // It returns an error if any occurs during the process.
@@ -307,11 +310,54 @@ var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 // 	return nil
 // }
 
-
 // //TODO: Implement function to check if the new targets differ from the current ones
 // func (ms *MasterSlave) CheckIfReceivedNewTargets() {
 // 	ms.CURRENT_DATA.COUNTER
 // }
 
+// Heartbeat sends a heartbeat message to all other elevators.
+func Heartbeat(id string, peers_port int, broadcast_port int) {
 
+	peer_bool := make(chan bool)
+	go peers.Transmitter(peers_port, id, peer_bool)
 
+	aliveUpdateMsg := make(chan structs.AliveMsg)
+
+	go bcast.Transmitter(broadcast_port, aliveUpdateMsg)
+}
+
+// CheckHeartbeat checks if a heartbeat has been received from the leader.
+func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
+	peers_update_channel := make(chan peers.PeerUpdate)
+
+	go peers.Receiver(peers_port, peers_update_channel)
+
+	aliveCheck := make(chan structs.AliveMsg)
+
+	go bcast.Receiver(broadcast_port, aliveCheck)
+
+	//Prints peer update
+	for {
+		select {
+		case p := <-peers_update_channel:
+			fmt.Printf("Peer update:\n")
+			fmt.Printf("  Peers:    %q\n", p.Peers)
+			fmt.Printf("  New:      %q\n", p.New)
+			fmt.Printf("  Lost:     %q\n", p.Lost)
+			if p.New != "" {
+				UpdateElevatorMap(ms, p.New)
+			}
+		case a := <-aliveCheck:
+			fmt.Printf("Received %#v \n", a)
+		}
+	}
+}
+
+// Adds new address and id number to the ElevatorMap
+func UpdateElevatorMap(ms *MasterSlave, newElevatorID string) {
+
+	splitString := strings.Split(newElevatorID, "-")
+	elevatorNum, _ := strconv.Atoi(splitString[0])
+	elevatorAddress := splitString[1]
+	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
+}

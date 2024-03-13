@@ -6,17 +6,14 @@ import (
 	// "Network-go/network/peers"
 	"Driver-go/elevio"
 	// "time"
-	// "strings"
-	singleelev "elevator/single-elevator"
 	master "elevator/master-slave"
+	singleelev "elevator/single-elevator"
 	"elevator/structs"
+	"flag"
+	"strconv"
 )
 
-var addresses [4]string;
-
-
-
-
+var addresses [4]string
 
 func main() {
 
@@ -40,26 +37,31 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 
-	unit_number := 0
+	//Gets elevator id from terminal
+	var id string
+	flag.StringVar(&id, "id", "", "id of this peer")
+	received_id, _ := strconv.Atoi(id)
+
+	// Gets port from terminal
+	var port string
+	flag.StringVar(&port, "port", "", "port of this peer")
+	flag.Parse()
 
 	// Create elevator and start main loop
-	elevator := singleelev.MakeElevator(unit_number)
+	elevator := singleelev.MakeElevator(received_id)
 
-	// Specify elevator port
-	port := ":8080"
 	// Create master slave
-	master_slave := master.MakeMasterSlave(unit_number, port, elevator)
+	master_slave := master.MakeMasterSlave(received_id, port, elevator)
 
 	// Start reading elevator channels
-	go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
+	//go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
 
 	// Start master main loop
-	master_slave.ReadButtons(drv_buttons)
+	//master_slave.ReadButtons(drv_buttons)
 	master_slave.MainLoop()
-	
 
 	// Prevent the program from terminating
-	// for { 
+	// for {
 	// 	time.Sleep(time.Minute)
 	// }
 
