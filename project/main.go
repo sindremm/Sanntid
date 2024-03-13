@@ -14,16 +14,10 @@ import (
 	"strconv"
 )
 
-var addresses [4]string
-
 func main() {
 
-	addresses[0] = "ad"
-	addresses[1] = "dsa"
-	addresses[2] = "dsa"
-	addresses[3] = "fdsa"
 
-	elevio.Init("localhost:15657", structs.N_FLOORS)
+	elevio.Init("localhost:15680", structs.N_FLOORS)
 
 	singleelev.ResetElevator()
 
@@ -64,8 +58,6 @@ func main() {
 	go master_slave.MainLoop()
 
 	
-	
-
 	// Prevent the program from terminating
 	for { 
 		time.Sleep(time.Minute)

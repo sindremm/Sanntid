@@ -52,7 +52,7 @@ const (
 	FILENAME          = "home/student/Documents/AjananMiaSindre/Sanntid/project/driver-go/master-slave/master-slave.go"
 )
 
-// ###################### Single Elevator ##########################3
+// ###################### Single Elevator ##########################
 type ElevatorState int
 
 const (
@@ -90,15 +90,14 @@ const (
 	NEWHALLORDER
 	UPDATEELEVATOR
 	CLEARHALLORDER
+	MASTERMSG
 )
 
-//DELETE SOON
-/*
-type TestTCPMsg struct {
-	SomeMessage string
-	TempOrder   int
+type ClearHallorderMsg struct {
+	clear_floor int
+	clear_direction Direction
 }
-*/
+
 
 // Changes timeout time for Dial. 500 milliseconds = 0.5 second
 var TCP_timeout = 500 * time.Millisecond
