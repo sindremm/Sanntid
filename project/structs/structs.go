@@ -1,8 +1,8 @@
 package structs
 
 import (
-	"time"
 	"fmt"
+	"time"
 )
 
 // ##################### System Variables #####################
@@ -73,8 +73,9 @@ const (
 // ########################### Network ############################
 
 type TCPMsg struct {
-	Sender_id int 		`json:"sender_id"`
-	Data SystemData		`json:"data"`
+	MessageType MessageType
+	Sender_id   int    `json:"sender_id"`
+	Data        []byte `json:"data"`
 }
 
 type AliveMsg struct {
@@ -82,6 +83,14 @@ type AliveMsg struct {
 	address string
 	Iter    int
 }
+type MessageType int
+
+const (
+	NEWCABCALL MessageType = iota
+	NEWHALLORDER
+	UPDATEELEVATOR
+	CLEARHALLORDER
+)
 
 //DELETE SOON
 /*
@@ -94,49 +103,44 @@ type TestTCPMsg struct {
 // Changes timeout time for Dial. 500 milliseconds = 0.5 second
 var TCP_timeout = 500 * time.Millisecond
 
-
-
 //TODO: remove
 // ############################ For testing purposes ##################################
 
-
-func SystemData_to_string(data SystemData) (string){
+func SystemData_to_string(data SystemData) string {
 	end_string := ""
 
 	end_string += fmt.Sprintf("MASTER_ID: %d \n", data.MASTER_ID)
-	
-	
+
 	// ALL RECEIVED ORDERS
 	end_string += fmt.Sprintf("UP_BUTTON_ARRAY: %v \n", data.UP_BUTTON_ARRAY)
 	end_string += fmt.Sprintf("DOWN_BUTTON_ARRAY: %v \n", data.DOWN_BUTTON_ARRAY)
-	
+
 	for i := 0; i < 3; i++ {
 		// POSITION AND TARGET OF EACH ELEVATOR
 		end_string += fmt.Sprintf("ELEVATOR_DATA[%d] : { \n", i)
 		// Specifies wether the elevator is in working condition
 		end_string += fmt.Sprintf("\tALIVE: %t \n", data.ELEVATOR_DATA[i].ALIVE)
-		// The address of the elevator for TCP communication 
+		// The address of the elevator for TCP communication
 		end_string += fmt.Sprintf("\tADDRESS: %s \n", data.ELEVATOR_DATA[i].ADDRESS)
 
 		// All active cab buttons
 		end_string += fmt.Sprintf("\tINTERNAL_BUTTON_ARRAY: %v \n", data.ELEVATOR_DATA[i].INTERNAL_BUTTON_ARRAY)
-		
+
 		// TARGETS OF EACH ELEVATOR
 		end_string += fmt.Sprintf("\tELEVATOR_TARGETS: %v \n", data.ELEVATOR_DATA[i].ELEVATOR_TARGETS)
 		// State machine state of elevator
 		end_string += fmt.Sprintf("\tINTERNAL_STATE: %v \n", data.ELEVATOR_DATA[i].INTERNAL_STATE)
 		// The last floor the elevator visited
 		end_string += fmt.Sprintf("\tCURRENT_FLOOR: %d \n", data.ELEVATOR_DATA[i].CURRENT_FLOOR)
-		
+
 		//TODO: update usage of direction
 		end_string += fmt.Sprintf("\tDIRECTION: %v \n", data.ELEVATOR_DATA[i].DIRECTION)
 
 		end_string += "\n}\n\n"
 
 	}
-	
 
-	// COUNTER FOR MESSAGE SYNCHRONIZATION 
+	// COUNTER FOR MESSAGE SYNCHRONIZATION
 	end_string += fmt.Sprintf("COUNTER: %d \n", data.COUNTER)
 
 	return end_string
