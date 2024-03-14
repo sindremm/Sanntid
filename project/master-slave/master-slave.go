@@ -30,9 +30,6 @@ type MasterSlave struct {
 func MakeMasterSlave(UnitID int, port string) *MasterSlave {
 	MS := new(MasterSlave)
 
-
-	
-
 	// Initialize current data
 	SD := structs.SystemData{
 		MASTER_ID:         0,
@@ -87,6 +84,7 @@ func (ms *MasterSlave) MainLoop() {
 	// Main loop of Master-slave
 	for {
 
+		// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
 		time.Sleep(time.Millisecond * 100)
 		if is_master {
 
@@ -104,35 +102,27 @@ func (ms *MasterSlave) MainLoop() {
 					//Decodes the data recieved from slave
 					decoded_data := tcp_interface.DecodeMessage(data)
 					id := decoded_data.Sender_id
-					decoded_systemData := tcp_interface.DecodeSystemData(decoded_data.Data)
 
 					if decoded_data.MessageType == structs.NEWCABCALL {
+						decoded_message := tcp_interface.DecodeHallOrderMsg(decoded_data.Data)
 
-						//Adds cab call from slave to the current data
-						internal_buttons := decoded_systemData.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY
-
-						for i := 0; i < structs.N_FLOORS; i++ {
-							if internal_buttons[i] == true {
-								ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[i] = true
-							}
-						}
+						// Set corresponding cab order to true
+						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[decoded_message.Order_floor] = true
 
 					} else if decoded_data.MessageType == structs.NEWHALLORDER {
+						decoded_hallOrderMessage := tcp_interface.DecodeHallOrderMsg(decoded_data.Data)
 
-						//Adds orders from slaves to the current data
-						up_buttons := decoded_systemData.UP_BUTTON_ARRAY
-						down_buttons := decoded_systemData.DOWN_BUTTON_ARRAY
+						clear_floor := decoded_hallOrderMessage.Order_floor
 
-						for i := 0; i < structs.N_FLOORS; i++ {
-							if up_buttons[i] == true {
-								ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] = true
-							}
-							if down_buttons[i] == true {
-								ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[i] = true
-							}
+						if decoded_hallOrderMessage.Order_direction[0] {
+							ms.CURRENT_DATA.UP_BUTTON_ARRAY[clear_floor] = true
+						}
+						if decoded_hallOrderMessage.Order_direction[1] {
+							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor] = true
 						}
 
 					} else if decoded_data.MessageType == structs.UPDATEELEVATOR {
+						decoded_systemData := tcp_interface.DecodeSystemData(decoded_data.Data)
 
 						//Updates the elevator data when message type is UPDATEELEVATOR
 						ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
@@ -141,11 +131,13 @@ func (ms *MasterSlave) MainLoop() {
 
 						//Clears The direction button and the internal button of the cleared floor
 						hallOrderMsg := tcp_interface.DecodeHallOrderMsg(decoded_data.Data)
-						clear_floor := hallOrderMsg.Clear_floor
-						clear_direction := hallOrderMsg.Clear_direction
+						clear_floor := hallOrderMsg.Order_floor
+						clear_direction := hallOrderMsg.Order_direction
+
+						// Clear cab order
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[clear_floor] = false
 
-						// Check and clear up and down
+						// Check and clear up and down order
 						if clear_direction[0] {
 							ms.CURRENT_DATA.UP_BUTTON_ARRAY[clear_floor] = false
 						}
@@ -171,8 +163,6 @@ func (ms *MasterSlave) MainLoop() {
 
 			// Send updated SystemData
 			ms.BroadcastSystemData()
-
-			// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
 
 		} else {
 			// Run if current elevator is slave
@@ -213,16 +203,13 @@ func (ms *MasterSlave) BroadcastSystemData() {
 		}
 
 		//Send only data if the slave is alive
-		if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE == true {
+		if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
 			encoded_system_data = tcp_interface.EncodeMessage(&send_message)
 			tcp_interface.SendData(client_address, encoded_system_data)
 		}
 	}
 
 }
-
-
-
 
 func (ms *MasterSlave) UpdateElevatorTargets() {
 	// Get new elevator targets
@@ -239,10 +226,6 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 	for k := range movement_map {
 		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]].ELEVATOR_TARGETS = movement_map[k]
 	}
-}
-
-func (ms *MasterSlave) RequestSlaveData(data_string string) {
-
 }
 
 // // HandleOrderFromMaster is a method on the MasterSlave struct that processes an order from the master.

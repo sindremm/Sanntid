@@ -113,9 +113,9 @@ const (
 	MASTERMSG
 )
 
-type ClearHallorderMsg struct {
-	Clear_floor int
-	Clear_direction [2]bool
+type HallorderMsg struct {
+	Order_floor int
+	Order_direction [2]bool
 }
 
 

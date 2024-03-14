@@ -125,8 +125,8 @@ func DecodeSystemData(data []byte) *structs.SystemData{
 	return received_message
 }
 
-func DecodeHallOrderMsg(data []byte) *structs.ClearHallorderMsg{
-	var received_message *structs.ClearHallorderMsg
+func DecodeHallOrderMsg(data []byte) *structs.HallorderMsg{
+	var received_message *structs.HallorderMsg
 
 	err := json.Unmarshal([]byte(data), &received_message)
 	if err != nil {
