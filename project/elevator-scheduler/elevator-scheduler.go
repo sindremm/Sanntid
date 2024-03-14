@@ -128,40 +128,40 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][stru
 func main() {
 	//TODO: use a map to correspond states to elevator so it is not mixed up if some elevators are offline
 	states := [structs.N_ELEVATORS]structs.ElevatorData{
-		structs.ElevatorData{
+		{
 			ALIVE:         true,
 			CURRENT_FLOOR:  2,
 			ELEVATOR_TARGETS:   [structs.N_FLOORS][2]bool{
-				[2]bool{false, true}, 
-				[2]bool{false, false}, 
-				[2]bool{false, false},
-				[2]bool{false, false},
+				{false, true}, 
+				{false, false}, 
+				{false, false},
+				{false, false},
 			},
 			DIRECTION:      structs.UP,
 			INTERNAL_BUTTON_ARRAY: [structs.N_FLOORS]bool{false, false, false, true},
 			INTERNAL_STATE: 1,
 		},
-		structs.ElevatorData{
+		{
 			ALIVE:         true,
 			CURRENT_FLOOR:  2,
 			ELEVATOR_TARGETS:   [structs.N_FLOORS][2]bool{
-				[2]bool{false, true}, 
-				[2]bool{false, false}, 
-				[2]bool{false, false},
-				[2]bool{false, false},
+				{false, true}, 
+				{false, false}, 
+				{false, false},
+				{false, false},
 			},
 			DIRECTION:      structs.UP,
 			INTERNAL_BUTTON_ARRAY: [structs.N_FLOORS]bool{false, false, false, true},
 			INTERNAL_STATE: 1,
 		},
-		structs.ElevatorData{
+		{
 			ALIVE:         true,
 			CURRENT_FLOOR:  0,
 			ELEVATOR_TARGETS:   [structs.N_FLOORS][2]bool{
-				[2]bool{false, false}, 
-				[2]bool{false, false}, 
-				[2]bool{true, false},
-				[2]bool{false, false},
+				{false, false}, 
+				{false, false}, 
+				{true, false},
+				{false, false},
 			},
 			DIRECTION:      structs.UP,
 			INTERNAL_BUTTON_ARRAY: [structs.N_FLOORS]bool{false, false, false, true},

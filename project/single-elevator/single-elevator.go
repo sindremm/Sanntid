@@ -134,8 +134,6 @@ func (e Elevator) ElevatorLoop() {
 				}
 			}
 			
-			
-
 		case structs.DOOR_OPEN:
 			e.OpenDoor()
 
@@ -147,10 +145,17 @@ func (e Elevator) ElevatorLoop() {
 }
 
 // Read from the channels and put data into variables
-func (e Elevator) ReadChannels(current_floor chan int, is_obstructed chan bool, is_stopped chan bool) {
+func (e Elevator) ReadChannels(button_order chan elevio.ButtonEvent, current_floor chan int, is_obstructed chan bool, is_stopped chan bool) {
 
 	for {
-		select {
+	select {
+		case bo := <-button_order:
+			// Transform order to readable format
+			floor, btn := e.InterpretOrder(bo)
+			// Add order to internal array and set lights
+			e.AddOrderToSystemDAta(floor, btn)
+			elevio.SetButtonLamp(btn, floor, true)
+
 		case cf := <-current_floor:
 			*e.floor_sensor = cf
 			// fmt.Printf("\n From channel: %t \n", cf)
@@ -164,6 +169,31 @@ func (e Elevator) ReadChannels(current_floor chan int, is_obstructed chan bool, 
 			order_mutex.Unlock()
 			// fmt.Printf("Stopping: %t\n", *e.is_stopped)
 		}
+	}
+}
+
+// Convert order to readable format
+func (e *Elevator) InterpretOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType) {
+	order_floor := button_order.Floor
+	order_button := button_order.Button
+
+	return order_floor, order_button
+}
+
+
+// Add order to system data
+func (e *Elevator) AddOrderToSystemDAta(floor int, button elevio.ButtonType) {
+	e.AddHallOrderToMaster(floor, button)
+	switch button {
+	case 0:
+		e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[floor] = true
+		elevio.SetButtonLamp(elevio.BT_HallUp, floor, true)
+	case 1:
+		e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = true
+		elevio.SetButtonLamp(elevio.BT_HallDown, floor, true)
+	case 2:
+		e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID].INTERNAL_BUTTON_ARRAY[floor] = true
+		elevio.SetButtonLamp(elevio.BT_Cab, floor, true)
 	}
 }
 
@@ -349,8 +379,7 @@ func (e Elevator) AddCabOrderToMaster(floor int) {
 	if  master_id !=  unit_id {
 
 		// Encode data
-		data := [structs.N_FLOORS]bool{false, false, false, false}
-		data[floor] = true
+		data := floor
 		encoded_data, _ := json.Marshal(&data)
 
 		// Send data to master
@@ -362,15 +391,15 @@ func (e Elevator) AddCabOrderToMaster(floor int) {
 	
 }
 
-func (e Elevator) AddHallOrderToMaster(floor int, dir structs.Direction) {
+func (e Elevator) AddHallOrderToMaster(floor int, button elevio.ButtonType ) {
 	master_id := e.ms_unit.CURRENT_DATA.MASTER_ID
 
 
 	dir_bool := [2]bool{false, false}
-	if dir == structs.UP {
+	if button == elevio.BT_HallUp {
 		dir_bool[0] = true
 	} 
-	if dir == structs.DOWN {
+	if button == elevio.BT_HallDown {
 		dir_bool[1] = true
 	}
 
@@ -386,13 +415,6 @@ func (e Elevator) AddHallOrderToMaster(floor int, dir structs.Direction) {
 		e._message_data_to_master(encoded_data, structs.NEWHALLORDER)
 	}
 	
-
-	// Set cab order
-	if dir == structs.UP {
-		e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[floor] = true
-	} else if dir == structs.DOWN {
-		e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = true
-	}
 }
 
 func (e Elevator) AddElevatorDataToMaster() {
@@ -427,10 +449,8 @@ func (e Elevator) ClearOrderFromMaster(floor int, dir [2]bool) {
 	}
 	
 
-	fmt.Printf("Clearing\n")
 	// Clear internal order
-	current_unit := e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id]
-	current_unit.INTERNAL_BUTTON_ARRAY[floor] = false
+	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id].INTERNAL_BUTTON_ARRAY[floor] = false
 	
 	// Clear order in the given direction
 	if dir[0] {
@@ -444,15 +464,21 @@ func (e Elevator) ClearOrderFromMaster(floor int, dir [2]bool) {
 // Send a tcp-message with data to the master unit
 func (e Elevator) _message_data_to_master(data []byte, msg_type structs.MessageType) {
 	master_id := e.ms_unit.CURRENT_DATA.MASTER_ID
-		// Construct message
-		msg := structs.TCPMsg{
-			MessageType: msg_type,
-			Sender_id: e.ms_unit.UNIT_ID,
-			Data: data,
-		}
-		encoded_msg := tcp_interface.EncodeMessage(&msg)
-		// Send message to master
-		tcp_interface.SendData(e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[master_id].ADDRESS, encoded_msg)
+
+	// Don't send message to itself if master
+	if master_id == e.ms_unit.UNIT_ID {
+		return
+	}
+
+	// Construct message
+	msg := structs.TCPMsg{
+		MessageType: msg_type,
+		Sender_id: e.ms_unit.UNIT_ID,
+		Data: data,
+	}
+	encoded_msg := tcp_interface.EncodeMessage(&msg)
+	// Send message to master
+	tcp_interface.SendData(e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[master_id].ADDRESS, encoded_msg)
 }
 
 //TODO: Remember to remove
