@@ -17,7 +17,22 @@ import (
 
 func main() {
 
-	elevio.Init("localhost:15680", structs.N_FLOORS)
+	//Gets elevator id from terminal
+	var id string
+	flag.StringVar(&id, "id", "", "id of this peer")
+
+	// Gets port from terminal
+	var port string
+	flag.StringVar(&port, "port", "", "port of this peer")
+
+	//Must be after flags, but before the input from flags are used
+	flag.Parse()
+
+	received_id, _ := strconv.Atoi(id)
+
+	//Specifies port so that several simulators can be run on same computer
+	var init_port = 15680 + received_id
+	elevio.Init("localhost:"+strconv.Itoa(init_port), structs.N_FLOORS)
 
 	singleelev.ResetElevator()
 
@@ -31,16 +46,6 @@ func main() {
 	go elevio.PollFloorSensor(drv_floors)
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
-
-	//Gets elevator id from terminal
-	var id string
-	flag.StringVar(&id, "id", "", "id of this peer")
-	received_id, _ := strconv.Atoi(id)
-
-	// Gets port from terminal
-	var port string
-	flag.StringVar(&port, "port", "", "port of this peer")
-	flag.Parse()
 
 	// Create elevator and start main loop
 	// Create master slave
