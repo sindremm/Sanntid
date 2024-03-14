@@ -84,8 +84,8 @@ func (ms *MasterSlave) MainLoop() {
 	
 	// Main loop of Master-slave
 	for {
-		// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
-		time.Sleep(time.Second*5)
+		
+		time.Sleep(time.Millisecond*100)
 		if is_master {
 
 			// Run if current elevator is master
@@ -98,6 +98,7 @@ func (ms *MasterSlave) MainLoop() {
 			for {
 				select {
 				case data := <-received_data_channel:
+					
 
 					//Decodes the data recieved from slave
 					decoded_data := tcp_interface.DecodeMessage(data)
@@ -143,9 +144,11 @@ func (ms *MasterSlave) MainLoop() {
 						clear_direction := hallOrderMsg.Clear_direction
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[clear_floor] = false
 
-						if clear_direction == structs.UP {
+						// Check and clear up and down
+						if clear_direction[0] {
 							ms.CURRENT_DATA.UP_BUTTON_ARRAY[clear_floor] = false
-						}else if clear_direction == structs.DOWN {
+						}
+						if clear_direction[1] {
 							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor] = false
 						}
 					}
@@ -155,6 +158,7 @@ func (ms *MasterSlave) MainLoop() {
 					break loop
 				}
 			}
+
 
 			
 

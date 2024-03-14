@@ -95,7 +95,7 @@ const (
 
 type ClearHallorderMsg struct {
 	Clear_floor int
-	Clear_direction Direction
+	Clear_direction [2]bool
 }
 
 
