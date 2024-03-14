@@ -20,10 +20,10 @@ import (
 )
 
 type MasterSlave struct {
-	CURRENT_DATA  *structs.SystemData
-	UNIT_ID       int
-	IP_ADDRESS    string
-	LISTEN_PORT   string
+	CURRENT_DATA *structs.SystemData
+	UNIT_ID      int
+	IP_ADDRESS   string
+	LISTEN_PORT  string
 }
 
 // Create a MasterSlave
@@ -81,11 +81,10 @@ func (ms *MasterSlave) MainLoop() {
 	// Start reading received data
 	go tcp_interface.ReceiveData(own_address, received_data_channel)
 
-	
 	// Main loop of Master-slave
 	for {
-		
-		time.Sleep(time.Millisecond*100)
+
+		time.Sleep(time.Millisecond * 100)
 		if is_master {
 
 			// Run if current elevator is master
@@ -98,19 +97,18 @@ func (ms *MasterSlave) MainLoop() {
 			for {
 				select {
 				case data := <-received_data_channel:
-					
 
 					//Decodes the data recieved from slave
 					decoded_data := tcp_interface.DecodeMessage(data)
 					id := decoded_data.Sender_id
 					decoded_systemData := tcp_interface.DecodeSystemData(decoded_data.Data)
 
-					if decoded_data.MessageType == structs.NEWCABCALL{
+					if decoded_data.MessageType == structs.NEWCABCALL {
 
 						//Adds cab call from slave to the current data
 						internal_buttons := decoded_systemData.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY
 
-						for i := 0; i < structs.N_FLOORS; i++{
+						for i := 0; i < structs.N_FLOORS; i++ {
 							if internal_buttons[i] == true {
 								ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[i] = true
 							}
@@ -122,7 +120,7 @@ func (ms *MasterSlave) MainLoop() {
 						up_buttons := decoded_systemData.UP_BUTTON_ARRAY
 						down_buttons := decoded_systemData.DOWN_BUTTON_ARRAY
 
-						for i := 0; i < structs.N_FLOORS; i++{
+						for i := 0; i < structs.N_FLOORS; i++ {
 							if up_buttons[i] == true {
 								ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] = true
 							}
@@ -152,15 +150,12 @@ func (ms *MasterSlave) MainLoop() {
 							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor] = false
 						}
 					}
-					
+
 					// fmt.Printf("data: %s", structs.SystemData_to_string(decoded_data.Data))
 				default:
 					break loop
 				}
 			}
-
-
-			
 
 			// Update calls, buttons
 			// Update the states of each elevator
@@ -174,7 +169,6 @@ func (ms *MasterSlave) MainLoop() {
 			// Send updated SystemData
 			ms.BroadcastSystemData()
 
-			
 			// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
 
 		} else {
@@ -211,11 +205,15 @@ func (ms *MasterSlave) BroadcastSystemData() {
 		// Send system data to client
 		send_message := structs.TCPMsg{
 			MessageType: structs.MASTERMSG,
-			Sender_id: ms.UNIT_ID,
-			Data:      encoded_current_data,
+			Sender_id:   ms.UNIT_ID,
+			Data:        encoded_current_data,
 		}
-		encoded_system_data = tcp_interface.EncodeMessage(&send_message)
-		tcp_interface.SendData(client_address, encoded_system_data)
+
+		//Send only data if the slave is alive
+		if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE == true {
+			encoded_system_data = tcp_interface.EncodeMessage(&send_message)
+			tcp_interface.SendData(client_address, encoded_system_data)
+		}
 	}
 
 }

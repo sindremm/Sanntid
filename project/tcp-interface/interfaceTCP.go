@@ -1,54 +1,39 @@
 package interfaceTCP
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net"
 
-	"elevator/network/localip"
 	"elevator/structs"
 	"encoding/json"
-	//"strconv"
-	//"strings"
-	//"time"
 )
+// func main() {
 
-// Added comment
-// var our_port = "10005"
+// 	//Gets local IP
+// 	localIP, err := localip.LocalIP()
+// 	if err != nil {
+// 		fmt.Printf("Local IP error: %v \n", err)
+// 	}
+// 	fmt.Printf("\nIP:", localIP)
 
-// var slave_IP = "172.23.70.94"
+// 	//The id that gets broadcasted to peers
+// 	var id string
+// 	flag.StringVar(&id, "id", "", "id of this peer")
+// 	flag.Parse()
 
-// var slave_port = "10005"
+// 	//Ports for checking for life
+// 	broadcast_port := 33344
+// 	peers_port := 33224
 
-// var slave_address = slave_IP + ":" + slave_port
+// 	fmt.Printf("\n %v %v \n", peers_port, broadcast_port)
 
-func main() {
+// 	//tempMessage := structs.TestTCPMsg{"Hello", 544}
 
-	//Gets local IP
-	localIP, err := localip.LocalIP()
-	if err != nil {
-		fmt.Printf("Local IP error: %v \n", err)
-	}
-	fmt.Printf("\nIP:", localIP)
-
-	//The id that gets broadcasted to peers
-	var id string
-	flag.StringVar(&id, "id", "", "id of this peer")
-	flag.Parse()
-
-	//Ports for checking for life
-	broadcast_port := 33344
-	peers_port := 33224
-
-	fmt.Printf("\n %v %v \n", peers_port, broadcast_port)
-
-	//tempMessage := structs.TestTCPMsg{"Hello", 544}
-
-	// updateLife(id, peers_port, broadcast_port)
-	// checkForLife(id, peers_port, broadcast_port)
-	//communicate(localIP, tempMessage)
-}
+// 	// updateLife(id, peers_port, broadcast_port)
+// 	// checkForLife(id, peers_port, broadcast_port)
+// 	//communicate(localIP, tempMessage)
+// }
 
 //TODO: Delete when AJ is done refactoring
 /*
