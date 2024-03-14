@@ -53,11 +53,11 @@ func main() {
 	elevator := singleelev.MakeElevator(received_id, master_slave)
 
 	// Start reading elevator channels
-	go elevator.ReadChannels(drv_floors, drv_obstr, drv_stop)
+	go elevator.ReadChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
 	go elevator.ElevatorLoop()
 
 	// Start master main loop
-	go master_slave.ReadButtons(drv_buttons)
+	// go master_slave.ReadButtons(drv_buttons)
 	go master_slave.MainLoop()
 
 	// Prevent the program from terminating

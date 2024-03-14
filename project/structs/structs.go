@@ -46,6 +46,26 @@ type ElevatorData struct {
 	DIRECTION Direction // 0 for stop, 1 for up, 2 for down
 }
 
+// func MakeElevatorData() (ElevatorData) {
+// 	btn_array := new([N_FLOORS]bool)
+// 	elev_targets := new([N_FLOORS][2]bool)
+// 	for i := 0; i < N_FLOORS; i++ {
+// 		btn_array[i] = false
+// 		elev_targets[i] = [2]bool{false, false}
+// 	}
+
+
+// 	return ElevatorData{
+// 		ALIVE: false,
+// 		ADDRESS: "",
+// 		INTERNAL_BUTTON_ARRAY: btn_array,
+// 		ELEVATOR_TARGETS: *elev_targets,
+// 		INTERNAL_STATE: 0,
+// 		CURRENT_FLOOR: -1,
+// 		DIRECTION: 0,
+// 	}
+// }
+
 const (
 	SERVER_IP_ADDRESS = "127.0.0.1"
 	PORT              = "20005"

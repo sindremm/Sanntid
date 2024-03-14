@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"Driver-go/elevio"
+	// "Driver-go/elevio"
 
 	scheduler "elevator/elevator-scheduler"
 	"elevator/structs"
@@ -29,6 +29,9 @@ type MasterSlave struct {
 // Create a MasterSlave
 func MakeMasterSlave(UnitID int, port string) *MasterSlave {
 	MS := new(MasterSlave)
+
+
+	
 
 	// Initialize current data
 	SD := structs.SystemData{
@@ -220,42 +223,8 @@ func (ms *MasterSlave) BroadcastSystemData() {
 
 }
 
-// Read from the channels and put data into variables
-func (ms *MasterSlave) ReadButtons(button_order chan elevio.ButtonEvent) {
-	for {
-		select {
-		case bo := <-button_order:
-			// Transform order to readable format
-			floor, btn := ms.InterpretOrder(bo)
-			// Add order to internal array and set lights
-			ms.AddOrderToSystemDAta(floor, btn)
-			elevio.SetButtonLamp(btn, floor, true)
-		}
-	}
-}
 
-// Convert order to readable format
-func (ms *MasterSlave) InterpretOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType) {
-	order_floor := button_order.Floor
-	order_button := button_order.Button
 
-	return order_floor, order_button
-}
-
-// Add order to system data
-func (ms *MasterSlave) AddOrderToSystemDAta(floor int, button elevio.ButtonType) {
-	switch button {
-	case 0:
-		ms.CURRENT_DATA.UP_BUTTON_ARRAY[floor] = true
-		elevio.SetButtonLamp(elevio.BT_HallUp, floor, true)
-	case 1:
-		ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = true
-		elevio.SetButtonLamp(elevio.BT_HallDown, floor, true)
-	case 2:
-		ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].INTERNAL_BUTTON_ARRAY[floor] = true
-		elevio.SetButtonLamp(elevio.BT_Cab, floor, true)
-	}
-}
 
 func (ms *MasterSlave) UpdateElevatorTargets() {
 	// Get new elevator targets
