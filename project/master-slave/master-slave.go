@@ -84,7 +84,7 @@ func (ms *MasterSlave) MainLoop() {
 	
 	// Main loop of Master-slave
 	for {
-		fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
+		// fmt.Printf("%s", structs.SystemData_to_string(*ms.CURRENT_DATA))
 		time.Sleep(time.Second*5)
 		if is_master {
 

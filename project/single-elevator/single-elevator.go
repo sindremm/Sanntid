@@ -2,7 +2,7 @@ package singleelev
 
 import (
 	// "flag"
-	// "fmt"
+	"fmt"
 	// "os"
 	"sync"
 	"time"
@@ -94,25 +94,14 @@ func (e Elevator) ElevatorLoop() {
 			*e.internal_state = structs.STOPPED
 		}
 
-		// fmt.Printf("Internal_state: %v", e.internal_state)
-		// fmt.Printf("Stopped: %t \n", *e.is_stopped)
-		// fmt.Printf("Obstructed: %t \n", *e.is_obstructed)
-		// fmt.Printf("current floor: %d\n", *e.current_floor)
-		// fmt.Printf("at floor: %d\n", *e.at_floor)
-		// fmt.Printf("target floor: %d\n", *e.target_floor)
-		// fmt.Printf("moving direction: %d\n", *e.moving_direction)
-		// fmt.Printf("Count %d \n", i)
-		// fmt.Printf("---\n")
+		
+
 
 		switch state := *e.internal_state; state {
 		case structs.IDLE:
 			// fmt.Printf("Idle\n")
 
-			// Update floor when channel gets new value
-			if *e.current_floor != *e.at_floor {
-				*e.at_floor = *e.current_floor
-				elevio.SetFloorIndicator(*e.at_floor)
-			}
+			
 
 			// Either move to existing target or choose new target
 			if *e.target_floor != -1 {
@@ -124,16 +113,17 @@ func (e Elevator) ElevatorLoop() {
 					//TODO: Find out why this causes the loop to run slower, and fix
 					// e.ClearOrdersAtFloor()
 				}
-			}
 
-			// Pick new target if none
-			e.PickTarget()
+				// Pick new target if none
+				e.PickTarget()
+			}
 
 		case structs.MOVING:
 			e.PickTarget()
 
 			// Run when arriving at new floor
 			if *e.current_floor != *e.at_floor {
+				e._debug_print()
 				// Update value of master
 				e.AddElevatorDataToMaster()
 
@@ -252,14 +242,13 @@ func (e Elevator) PickTarget() {
 }
 
 func (e Elevator) Visit_floor() {
-
-	// Run when no floor at initialization
+	
+	// The only time the code reaches this state is during initialization
 	if *e.target_floor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Stop)
 		*e.internal_state = structs.IDLE
+		return
 	}
-
-	*e.at_floor = *e.current_floor
 
 	if *e.at_floor == *e.target_floor {
 		// Reset internal button
@@ -267,8 +256,17 @@ func (e Elevator) Visit_floor() {
 
 		// // Make sure the correct orders are removed
 		// e.RemoveOrdersAtFloor(*e.at_floor, *e.moving_direction)
+		// Find id
+		// fmt.Printf("at_floor: %d\n", *e.at_floor)
+		// fmt.Printf("current_floor: %d\n", *e.current_floor)
+		// fmt.Printf("target_floor: %d\n", *e.target_floor)
 		id := e.ms_unit.UNIT_ID
-		e.RemoveOrdersAtFloor(*e.at_floor, e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[id].ELEVATOR_TARGETS[*e.at_floor])
+		// Find corresponding unit
+		unit := e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[id]
+		// Get allocated orders at floor
+		target := unit.ELEVATOR_TARGETS[*e.at_floor]
+
+		e.RemoveOrdersAtFloor(*e.at_floor, target)
 
 		// Transition to OpenDoor state
 		e.TransitionToOpenDoor()
@@ -424,8 +422,10 @@ func (e Elevator) ClearOrderFromMaster(floor int, dir structs.Direction) {
 	}
 	
 
+	fmt.Printf("Clearing\n")
 	// Clear internal order
-	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id - 1].INTERNAL_BUTTON_ARRAY[floor] = false
+	current_unit := e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id]
+	current_unit.INTERNAL_BUTTON_ARRAY[floor] = false
 	
 	// Clear order in the given direction
 	if dir == structs.UP {
@@ -447,6 +447,18 @@ func (e Elevator) _message_data_to_master(data []byte, msg_type structs.MessageT
 		encoded_msg := tcp_interface.EncodeMessage(&msg)
 		// Send message to master
 		tcp_interface.SendData(e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[master_id].ADDRESS, encoded_msg)
+}
+
+//TODO: Remember to remove
+func (e Elevator) _debug_print() {
+	fmt.Printf("Internal_state: %d", e.internal_state)
+	fmt.Printf("Stopped: %t \n", *e.is_stopped)
+	fmt.Printf("Obstructed: %t \n", *e.is_obstructed)
+	fmt.Printf("current floor: %d\n", *e.current_floor)
+	fmt.Printf("at floor: %d\n", *e.at_floor)
+	fmt.Printf("target floor: %d\n", *e.target_floor)
+	fmt.Printf("moving direction: %d\n", *e.moving_direction)
+	fmt.Printf("---\n")
 }
 
 
