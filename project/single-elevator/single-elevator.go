@@ -111,8 +111,8 @@ func (e Elevator) ElevatorLoop() {
 		case structs.MOVING:
 			
 
-			// Run when arriving at new floor
-			if *e.at_floor != *e.floor_sensor && *e.floor_sensor != -1{
+			// Run when arriving at new floor or when starting from target floor
+			if (*e.at_floor != *e.floor_sensor || *e.floor_sensor == *e.target_floor) && *e.floor_sensor != -1{
 				
 				// Update value of master
 				e.AddElevatorDataToMaster()
@@ -124,12 +124,16 @@ func (e Elevator) ElevatorLoop() {
 
 				// Run visit floor routine
 				e.Visit_floor()
+				continue
 			}
 
-			e.PickTarget()
-			if *e.target_floor != -1 {
-				e.MoveToTarget()
+			if *e.at_floor != -1 {
+				e.PickTarget()
+				if *e.target_floor != -1 {
+					e.MoveToTarget()
+				}
 			}
+			
 			
 
 		case structs.DOOR_OPEN:
@@ -202,7 +206,7 @@ func (e Elevator) PickTarget(){
 	// This code can be reworked to better adhere to the DRY-principle
 	// Check floors above
 
-	for i := 1; i <= 3; i++ {
+	for i := 0; i <= 3; i++ {
 		if *e.at_floor+i < 4 {
 
 			// Check floors above
@@ -265,7 +269,6 @@ func (e Elevator) Visit_floor() {
 		// Get allocated orders at floor
 		target := unit.ELEVATOR_TARGETS[*e.at_floor]
 
-		e.RemoveOrdersAtFloor(*e.at_floor, target)
 		e.ClearOrderFromMaster(*e.at_floor, target)
 
 		// Transition to OpenDoor state
@@ -335,12 +338,7 @@ func (e Elevator) Stop() {
 		// fmt.Print(e.internal_state)
 	}
 }
-func (e Elevator) RemoveOrdersAtFloor(floor int, calls [2]bool) {
-	//TODO: Fill in function. May have to be placed in Master-Slave or elsewhere
-	
 
-	
-}
 
 
 
