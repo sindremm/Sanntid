@@ -236,16 +236,16 @@ func (e *Elevator) PickTarget() {
 		down_calls[i] = targets[i][1]
 	}
 
-	fmt.Printf("Targets: %v \n", targets)
-	fmt.Printf("Targets (UP): %v \n ", up_calls)
-	fmt.Printf("Targets (DOWN): %v \n ", down_calls)
+	// fmt.Printf("Targets: %v \n", targets)
+	// fmt.Printf("Targets (UP): %v \n ", up_calls)
+	// fmt.Printf("Targets (DOWN): %v \n ", down_calls)
 	// Sets new target to closest floor, prioritizing floors above
 
 	// TODO: Add check to see if there are new orders instead of running this loop every time
 
 	// This code can be reworked to better adhere to the DRY-principle
 	// Check floors above
-	new_target := -1
+	new_target := *e.target_floor
 
 	for i := 0; i <= 3; i++ {
 		if *e.at_floor+i < structs.N_FLOORS {
@@ -253,12 +253,17 @@ func (e *Elevator) PickTarget() {
 			// Check floors above
 			check_floor := *e.at_floor + i
 
-			if check_floor < 0 || check_floor > 4 {
+			if check_floor < 0 || check_floor > 4 || *e.moving_direction == structs.DOWN {
 				continue
 			}
 
 			// Set target if an order exists on floor
-			if up_calls[check_floor] || down_calls[check_floor] || cab_calls[check_floor] {
+			// Check if elevator is still or going upwards
+
+			// Only move to down-calls when staying still
+			down_when_still := down_calls[check_floor] && (*e.moving_direction == structs.STILL)
+			// Always serve up calls and cab_calls
+			if up_calls[check_floor] || cab_calls[check_floor] || down_when_still {
 				new_target = check_floor
 				break
 			}
@@ -268,19 +273,20 @@ func (e *Elevator) PickTarget() {
 			// Check floors below
 			check_floor := *e.at_floor - i
 
-			if check_floor < 0 || check_floor > 4 {
+			if check_floor < 0 || check_floor > 4 || *e.moving_direction == structs.UP{
 				continue
 			}
 
-			// Set target if an order exists on floor
-			if up_calls[check_floor] || down_calls[check_floor] || cab_calls[check_floor] {
+			// Only move to down-calls when staying still
+			up_when_still := up_calls[check_floor] && (*e.moving_direction == structs.STILL)
+			if down_calls[check_floor] || cab_calls[check_floor] || up_when_still {
 				new_target = check_floor
 				break
 			}
 		}
 	}
 
-	fmt.Printf("Picking target new target: %d \n", new_target)
+	// fmt.Printf("Picking target new target: %d \n", new_target)
 	*e.target_floor = new_target
 
 	// Update value of master
