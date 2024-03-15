@@ -145,9 +145,11 @@ func (ms *MasterSlave) MainLoop() {
 
 						// Check and clear up and down order
 						if clear_direction[0] {
+							fmt.Printf("Clear in up in master\n")
 							ms.CURRENT_DATA.UP_BUTTON_ARRAY[clear_floor] = false
 						}
 						if clear_direction[1] {
+							fmt.Printf("Clear in down in master\n")
 							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor] = false
 						}
 					}
@@ -172,7 +174,7 @@ func (ms *MasterSlave) MainLoop() {
 
 		} else {
 			// Run if current elevator is slave
-
+			fmt.Printf("Gets to slave code\n")
 			// Receive data from master
 			received_data := <-received_data_channel
 			decoded_data := tcp_interface.DecodeMessage(received_data)
@@ -181,6 +183,7 @@ func (ms *MasterSlave) MainLoop() {
 			// Check if the received data is newer then current data, and update current data if so
 			if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
 				ms.CURRENT_DATA = decoded_systemData
+				fmt.Printf("Updates systemdata\n")
 			}
 			UpdateElevatorLights(ms)
 		}
@@ -258,7 +261,7 @@ func UpdateElevatorLights(ms *MasterSlave) {
 			elevio.SetButtonLamp(2, i, true)
 		}
 	}
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 }
 
 // Heartbeat sends a heartbeat message to all other elevators.
