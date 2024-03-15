@@ -21,13 +21,6 @@ func DetermineMaster(id string, currentMasterId string, connectedPeers []elev_st
 		fmt.Println("Error: This elevator id is not a int, reboot with proper integer id")
 	}
 
-	// // Check if there are no connected peers
-	// noConnPeers := len(connectedPeers) == 0
-	// if noConnPeers {
-	// 	// If there are no connected peers, add the current node's id to the peers slice
-	// 	peers = append(peers, currentSystemData)
-	// }
-
 	// Iterate over the connected peers
     for _, p := range connectedPeers {
         // Add each peer's SystemData to the peers slice
