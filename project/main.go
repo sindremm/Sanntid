@@ -10,6 +10,7 @@ import (
 	// "strings"
 	master "elevator/master-slave"
 	singleelev "elevator/single-elevator"
+	//election_handler "elevator/network/new-election"
 	"elevator/structs"
 	"flag"
 	"strconv"
@@ -31,7 +32,7 @@ func main() {
 	received_id, _ := strconv.Atoi(id)
 
 	//Specifies port so that several simulators can be run on same computer
-	var init_port = 15690 + received_id
+	var init_port = 15790 + received_id
 	elevio.Init("localhost:"+strconv.Itoa(init_port), structs.N_FLOORS)
 
 	singleelev.ResetElevator()
@@ -51,6 +52,7 @@ func main() {
 	// Create master slave
 	master_slave := master.MakeMasterSlave(received_id, ":"+port)
 	elevator := singleelev.MakeElevator(received_id, master_slave)
+
 
 	// Start reading elevator channels
 	go elevator.ReadChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)

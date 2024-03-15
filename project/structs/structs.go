@@ -26,6 +26,8 @@ type SystemData struct {
 
 	// COUNTER FOR MESSAGE SYNCHRONIZATION
 	COUNTER int
+
+	ID int
 }
 
 type ElevatorData struct {

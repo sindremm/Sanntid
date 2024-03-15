@@ -101,9 +101,12 @@ func (e Elevator) ElevatorLoop() {
 			if *e.target_floor != -1 {
 				// Move towards target if there is one
 				e.MoveToTarget()
+				//fmt.Printf("At movetotarget\n")
 			} else if *e.at_floor != -1 {
 				// Pick new target if no target, and the floor of the elevator is known
 				e.PickTarget()
+				//fmt.Printf("At pick target\n")
+				time.Sleep(50 * time.Millisecond)
 			}
 
 		case structs.MOVING:
@@ -317,8 +320,8 @@ func (e Elevator) Visit_floor() {
 		// Reset target
 		*e.target_floor = -1
 		*e.moving_direction = structs.STILL
-		fmt.Printf("At DOOR_OPEN\n")
-		*e.internal_state = structs.DOOR_OPEN
+		//fmt.Printf("At DOOR_OPEN\n")
+		//*e.internal_state = structs.DOOR_OPEN
 
 		// // Make sure the correct orders are removed
 		// e.RemoveOrdersAtFloor(*e.at_floor, *e.moving_direction)
@@ -345,8 +348,8 @@ func (e Elevator) Visit_floor() {
 
 	}
 	// fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
-	//e._debug_print_internal_states()
-	//e._debug_print_master_data()
+	e._debug_print_internal_states()
+	e._debug_print_master_data()
 
 }
 
