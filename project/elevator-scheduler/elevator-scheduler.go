@@ -37,7 +37,7 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 	for i := 0; i < len(*systemData.ELEVATOR_DATA); i++ {
 
 		// Don't take elevator into account if not alive
-		if !systemData.ELEVATOR_DATA[i].ALIVE {
+		if !systemData.ELEVATOR_DATA[i].ALIVE || systemData.ELEVATOR_DATA[i].INTERNAL_STATE == structs.STOPPED {
 			continue
 		}
 
@@ -48,8 +48,12 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 		new_state.Behaviour = state_to_behaviour(state)
 		new_state.Floor = state.CURRENT_FLOOR
 		new_state.Direction = direction_strings[state.DIRECTION]
-		// fmt.Printf("Scheduler direction: %s\n", new_state.Direction)
 		new_state.CabRequests = (*systemData.ELEVATOR_DATA)[i].INTERNAL_BUTTON_ARRAY
+		fmt.Printf("Elevator[%d]: {\n", i)
+		fmt.Printf("\tBehaviour: %s\n", new_state.Behaviour)
+		fmt.Printf("\tDirection: %v\n", new_state.Direction)
+		fmt.Printf("\tRequest: %v\n", new_state.CabRequests)
+		fmt.Printf("}")
 
 		// Set the values for the corresponding elevator
 		new_states[elevator_strings[i]] = new_state
@@ -125,6 +129,8 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][stru
 	return output
 }
 
+
+// Function for testing
 func main() {
 	//TODO: use a map to correspond states to elevator so it is not mixed up if some elevators are offline
 	states := [structs.N_ELEVATORS]structs.ElevatorData{

@@ -90,6 +90,7 @@ func (e Elevator) ElevatorLoop() {
 		if *e.is_stopped {
 			// fmt.Print("Stop\n")
 			*e.internal_state = structs.STOPPED
+			e.AddElevatorDataToMaster()
 		}
 
 		switch state := *e.internal_state; state {
@@ -251,6 +252,7 @@ func (e *Elevator) PickTarget() {
 			// Check floors above
 			check_floor := *e.at_floor + i
 
+			// Return if order is out of bound, or if elevator is moving in oposite direction
 			if check_floor < 0 || check_floor > 4 || *e.moving_direction == structs.DOWN {
 				continue
 			}
@@ -271,6 +273,7 @@ func (e *Elevator) PickTarget() {
 			// Check floors below
 			check_floor := *e.at_floor - i
 
+			// Return if order is out of bound, or if elevator is moving in oposite direction
 			if check_floor < 0 || check_floor > 4 || *e.moving_direction == structs.UP {
 				continue
 			}
@@ -307,6 +310,7 @@ func (e Elevator) Visit_floor() {
 	if *e.target_floor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Stop)
 		*e.internal_state = structs.IDLE
+		e.AddElevatorDataToMaster()
 		return
 	}
 
@@ -344,7 +348,7 @@ func (e Elevator) Visit_floor() {
 		elevio.SetButtonLamp(2, *e.at_floor, false)
 
 	}
-	fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
+	// fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
 	//e._debug_print_internal_states()
 	//e._debug_print_master_data()
 
@@ -373,6 +377,8 @@ func (e Elevator) OpenDoor() {
 		if *e.at_floor == *e.target_floor {
 			*e.target_floor = -1
 		}
+
+		e.AddElevatorDataToMaster()
 	}
 
 }
@@ -457,7 +463,7 @@ func (e Elevator) AddHallOrderToMaster(floor int, button elevio.ButtonType) {
 
 }
 
-func (e Elevator) AddElevatorDataToMaster() {
+func (e *Elevator) AddElevatorDataToMaster() {
 	master_id := e.ms_unit.CURRENT_DATA.MASTER_ID
 	unit_id := e.ms_unit.UNIT_ID
 	// fmt.Printf("AddData")
