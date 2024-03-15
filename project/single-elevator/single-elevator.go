@@ -284,7 +284,6 @@ func (e Elevator) PickTarget() {
 func (e Elevator) Visit_floor() {
 	fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
 	e._debug_print_internal_states()
-
 	e._debug_print_master_data()
 
 	// The only time the code reaches this state is during initialization
@@ -297,6 +296,11 @@ func (e Elevator) Visit_floor() {
 	if *e.at_floor == *e.target_floor {
 		// Reset internal button
 		elevio.SetButtonLamp(2, *e.at_floor, false)
+
+		// Reset target
+		*e.target_floor = -1
+		*e.moving_direction = structs.STILL
+		*e.internal_state = structs.DOOR_OPEN
 
 		// // Make sure the correct orders are removed
 		// e.RemoveOrdersAtFloor(*e.at_floor, *e.moving_direction)
@@ -311,6 +315,7 @@ func (e Elevator) Visit_floor() {
 		target := unit.ELEVATOR_TARGETS[*e.at_floor]
 
 		e.ClearOrderFromMaster(*e.at_floor, target)
+		e.AddElevatorDataToMaster()
 
 		// Transition to OpenDoor state
 		e.TransitionToOpenDoor()
@@ -327,7 +332,6 @@ func (e Elevator) TransitionToOpenDoor() {
 	elevio.SetMotorDirection(elevio.MD_Stop)
 	elevio.SetDoorOpenLamp(true)
 	*e.internal_state = structs.DOOR_OPEN
-	e.AddElevatorDataToMaster()
 }
 
 func (e Elevator) OpenDoor() {
