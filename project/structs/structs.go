@@ -81,6 +81,7 @@ const (
 	MOVING
 	STOPPED
 	DOOR_OPEN
+	OBSTRUCTED
 )
 
 type Direction int

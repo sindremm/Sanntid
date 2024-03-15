@@ -133,7 +133,6 @@ func (e Elevator) ElevatorLoop() {
 				elevio.SetFloorIndicator(*e.at_floor)
 
 				// Run visit floor routine
-
 				e.Visit_floor()
 				continue
 			}
@@ -143,6 +142,9 @@ func (e Elevator) ElevatorLoop() {
 
 		case structs.STOPPED:
 			e.Stop()
+
+		case structs.OBSTRUCTED:
+			e.Obstruct()
 		}
 		// e.AddElevatorDataToMaster()
 		time.Sleep(100 * time.Millisecond)
@@ -308,6 +310,11 @@ func (e Elevator) Visit_floor() {
 		// Reset target
 		*e.target_floor = -1
 		*e.moving_direction = structs.STILL
+
+		// Transition to OpenDoor state
+		elevio.SetMotorDirection(elevio.MD_Stop)
+		*e.internal_state = structs.DOOR_OPEN
+		
 		//fmt.Printf("At DOOR_OPEN\n")
 		//*e.internal_state = structs.DOOR_OPEN
 
@@ -328,8 +335,7 @@ func (e Elevator) Visit_floor() {
 		fmt.Printf("Update 6\n")
 		e.AddElevatorDataToMaster()
 
-		// Transition to OpenDoor state
-		e.TransitionToOpenDoor()
+		
 
 		// TODO: Figure out logic when several buttons are pressed at target
 		elevio.SetButtonLamp(0, *e.at_floor, false)
@@ -343,34 +349,44 @@ func (e Elevator) Visit_floor() {
 
 }
 
-func (e Elevator) TransitionToOpenDoor() {
-	elevio.SetMotorDirection(elevio.MD_Stop)
-	elevio.SetDoorOpenLamp(true)
-	*e.internal_state = structs.DOOR_OPEN
-}
 
 func (e Elevator) OpenDoor() {
 
-	// Keep door open until not obstructed
+	elevio.SetDoorOpenLamp(true)
+	
+	// Open door
+	time.Sleep(3 * time.Second)
+
+	// Enter obstruction state if obstructed
 	obstruction_check := *e.is_obstructed
-
-	if !(obstruction_check) {
-
-		// Close door
-		time.Sleep(3 * time.Second)
-		elevio.SetDoorOpenLamp(false)
-
-		*e.internal_state = structs.IDLE
-
-		// Remove target if current floor is target floor
-		if *e.at_floor == *e.target_floor {
-			*e.target_floor = -1
-		}
-
-		fmt.Printf("Update 8\n")
+	if obstruction_check {
+		*e.internal_state = structs.OBSTRUCTED
 		e.AddElevatorDataToMaster()
+		return
 	}
 
+	elevio.SetDoorOpenLamp(false)
+	
+	// Remove target if current floor is target floor
+	if *e.at_floor == *e.target_floor {
+		*e.target_floor = -1
+	}
+
+	// Close door
+	*e.internal_state = structs.IDLE
+	fmt.Printf("Update 8\n")
+	e.AddElevatorDataToMaster()
+
+}
+
+func (e Elevator) Obstruct() {
+	elevator_obstruct := *e.is_obstructed
+
+	if !elevator_obstruct {
+		time.Sleep(3 * time.Second)
+		*e.internal_state = structs.DOOR_OPEN
+		e.AddElevatorDataToMaster()
+	}
 }
 
 func (e Elevator) MoveToTarget() {
@@ -399,11 +415,15 @@ func (e Elevator) Stop() {
 	if !elevator_stop {
 		time.Sleep(3 * time.Second)
 		*e.internal_state = structs.IDLE
+		e.AddElevatorDataToMaster()
+
 		elevio.SetStopLamp(false)
 		elevio.SetDoorOpenLamp(false)
 		// fmt.Print(e.internal_state)
 	}
 }
+
+
 
 //TODO: Find somewhere to place in the code
 // Send new cab orders to master
