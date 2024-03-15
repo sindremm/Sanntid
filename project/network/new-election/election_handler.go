@@ -13,7 +13,7 @@ import (
 func DetermineMaster(id string, currentMasterId string, connectedPeers []elev_structs.SystemData, isMaster chan<- bool) string {
 	// Initialize an empty slice to hold the ids of all peers
 	var peers []elev_structs.SystemData
-
+	fmt.Printf("Connected peers: %v\n", connectedPeers)
 	// Convert the current node's id to an integer
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
@@ -36,11 +36,11 @@ func DetermineMaster(id string, currentMasterId string, connectedPeers []elev_st
     })
 
 	// Print the sorted list of peers
-	fmt.Println("Sorted peers: ", peers)
+	//fmt.Println("Sorted peers: ", peers)
 
 	// Print the id of the master node (the one with the lowest id)
-	fmt.Printf("Elevator %s: Master is elevator %d\n", id, peers[0].ID)
-
+	//fmt.Printf("Elevator %s: Master is elevator %d\n", id, peers[0].ID)
+	fmt.Printf("Peers: %v\n", peers)
 	// If the current node's id is the lowest, signal that it is the master
 	if peers[0].ID == idInt {
 		isMaster <- true

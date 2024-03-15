@@ -17,8 +17,7 @@ import (
 	"elevator/network/bcast"
 	"elevator/network/localip"
 	"elevator/network/peers"
-	election "elevator/network/new-election"
-	elev_structs "elevator/structs"
+	//election "elevator/network/new-election"
 )
 
 type MasterSlave struct {
@@ -66,18 +65,19 @@ func MakeMasterSlave(UnitID int, port string) *MasterSlave {
 
 func (ms *MasterSlave) MainLoop() {
 	// Heartbeat
+	fmt.Printf("Start of loop \n")
 	peers_port := 33224
 	broadcast_port := 32244
 	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
-	peers_update_channel := make(chan peers.PeerUpdate)
-	isMaster := make(chan bool, 1)
-	var peerDataMap = make(map[string]elev_structs.SystemData)
+	//peers_update_channel := make(chan peers.PeerUpdate)
+	//isMaster := make(chan bool, 1)
+	//var peerDataMap = make(map[string]elev_structs.SystemData)
 	Heartbeat(input_id, peers_port, broadcast_port)
 
-	go CheckHeartbeat(ms, peers_port, broadcast_port, peers_update_channel)
+	go CheckHeartbeat(ms, peers_port, broadcast_port)
 
 	// Check if this elevator is Master
-	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
+	//is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 
 	// Start listening to received data
 	received_data_channel := make(chan []byte)
@@ -85,12 +85,16 @@ func (ms *MasterSlave) MainLoop() {
 
 	// Start reading received data
 	go tcp_interface.ReceiveData(own_address, received_data_channel)
-
+	fmt.Printf("Outside \n")
 	// Main loop of Master-slave
 	for {
-
 		//fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
 		time.Sleep(time.Millisecond * 100)
+		is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
+		fmt.Printf("Is master: %v \n", is_master)
+		fmt.Printf("dwebfweihfbqweibfh: %v", ms.CURRENT_DATA.MASTER_ID)
+
+		fmt.Printf("Elevator is in for\n")
 		if is_master {
 
 			// Run if current elevator is master
@@ -98,22 +102,22 @@ func (ms *MasterSlave) MainLoop() {
 			// TODO: Update SystemData:
 
 			// Get all data from channel and insert into SystemData
-
+			fmt.Printf("Elevator is in loop\n")
 		loop:
 			for {
 				select {
-				case p := <-peers_update_channel:
-					// Update the connected peers
-					connectedPeers := []elev_structs.SystemData{}
-					for _, peer := range p.Peers {
-						if data, ok := peerDataMap[peer]; ok {
-							connectedPeers = append(connectedPeers, data)
-						}
-					}
-					
-					// Call DetermineMaster with the connected peers
-					currentMasterId := election.DetermineMaster(strconv.Itoa(ms.UNIT_ID), strconv.Itoa(ms.CURRENT_DATA.MASTER_ID), connectedPeers, isMaster)
-					ms.CURRENT_DATA.MASTER_ID, _ = strconv.Atoi(currentMasterId)
+				// case p := <-peers_update_channel:
+				// 	// Update the connected peers
+				// 	connectedPeers := []elev_structs.SystemData{}
+				// 	for _, peer := range p.Peers {
+				// 		if data, ok := peerDataMap[peer]; ok {
+				// 			connectedPeers = append(connectedPeers, data)
+				// 		}
+				// 	}
+				// 	fmt.Printf("DetermineMaster reached\n")
+				// 	// Call DetermineMaster with the connected peers
+				// 	currentMasterId := election.DetermineMaster(strconv.Itoa(ms.UNIT_ID), strconv.Itoa(ms.CURRENT_DATA.MASTER_ID), connectedPeers, isMaster)
+				// 	ms.CURRENT_DATA.MASTER_ID, _ = strconv.Atoi(currentMasterId)
 
 				case data := <-received_data_channel:
 
@@ -174,6 +178,7 @@ func (ms *MasterSlave) MainLoop() {
 
 					// fmt.Printf("data: %s", structs.SystemData_to_string(decoded_data.Data))
 				default:
+
 					break loop
 				}
 			}
@@ -191,6 +196,20 @@ func (ms *MasterSlave) MainLoop() {
 			ms.BroadcastSystemData()
 
 		} else {
+			fmt.Printf("I AM HERE\n")
+			if ms.CURRENT_DATA.ELEVATOR_DATA[ms.CURRENT_DATA.MASTER_ID].ALIVE == false {
+				fmt.Printf("\n1\n")
+				for i := 0; i < structs.N_ELEVATORS; i++ {
+					if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
+						ms.CURRENT_DATA.MASTER_ID = i
+						fmt.Printf("New master: %v\n", ms.CURRENT_DATA.MASTER_ID)
+						ms.BroadcastSystemData()
+						//ms.MainLoop()
+						//is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
+					}
+				}
+			}
+			fmt.Printf("I AM HEREferlkntgw4ibgn\n")
 			// Run if current elevator is slave
 			//fmt.Printf("Gets to slave code\n")
 			// Receive data from master
@@ -201,10 +220,11 @@ func (ms *MasterSlave) MainLoop() {
 			// Check if the received data is newer then current data, and update current data if so
 			if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
 				ms.CURRENT_DATA = decoded_systemData
-				fmt.Printf("Updates systemdata\n")
+				//fmt.Printf("Updates systemdata\n")
 			}
 			UpdateElevatorLights(ms)
 		}
+		//fmt.Printf("mjau mjau\n")
 
 		// calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
 		// ms.ELEVATOR_UNIT.PickTarget(calls)
@@ -258,7 +278,7 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 }
 
 func UpdateElevatorLights(ms *MasterSlave) {
-	fmt.Printf("Lamp set\n")
+	//fmt.Printf("Lamp set\n")
 	for i := 0; i < structs.N_FLOORS; i++ {
 		if !ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] {
 			elevio.SetButtonLamp(0, i, false)
@@ -294,8 +314,8 @@ func Heartbeat(id string, peers_port int, broadcast_port int) {
 }
 
 // CheckHeartbeat checks if a heartbeat has been received from the leader.
-func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int, peers_update_channel chan peers.PeerUpdate) {
-
+func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
+	peers_update_channel := make(chan peers.PeerUpdate)
 	//Receives peer update
 	go peers.Receiver(peers_port, peers_update_channel)
 
@@ -337,7 +357,40 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 		elevatorNum, _ := splitPeerString(lostElevatorID[i])
 		ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = false
 	}
+}
 
+//var peerDataMap = make(map[string]elev_structs.SystemData)
+// connectedPeers := []elev_structs.SystemData{}
+// p := <-peers_update_channel
+// fmt.Printf("Peers channel1: %v \n", p)
+
+// for i := 0; i < structs.N_ELEVATORS; i++ {
+// 	if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
+// 		connectedPeers = append(connectedPeers, ms.CURRENT_DATA)
+// 	}
+// }
+// for data, _:= range p.Peers {
+// 	elevatorNum, _ := splitPeerString(data)
+// 		connectedPeers = append(connectedPeers, ms.CURRENT_DATA)
+// }
+// fmt.Printf("Peers channel2: %v \n", connectedPeers)
+// currentMasterId := election.DetermineMaster(strconv.Itoa(ms.UNIT_ID), strconv.Itoa(ms.CURRENT_DATA.MASTER_ID), connectedPeers, isMaster)
+// ms.CURRENT_DATA.MASTER_ID, _ = strconv.Atoi(currentMasterId)
+
+func newMasterChoice(ms *MasterSlave) {
+	if !ms.CURRENT_DATA.ELEVATOR_DATA[ms.CURRENT_DATA.MASTER_ID].ALIVE {
+		fmt.Printf("\n1\n")
+		for i := 0; i < structs.N_ELEVATORS; i++ {
+			if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
+				ms.CURRENT_DATA.MASTER_ID = i
+				fmt.Printf("New master: %v\n", ms.CURRENT_DATA.MASTER_ID)
+
+				//ms.MainLoop()
+				break
+				//is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
+			}
+		}
+	}
 }
 
 // Splits peer string to the unit ID and address

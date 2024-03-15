@@ -101,11 +101,11 @@ func (e Elevator) ElevatorLoop() {
 			if *e.target_floor != -1 {
 				// Move towards target if there is one
 				e.MoveToTarget()
-				fmt.Printf("At movetotarget\n")
+				//fmt.Printf("At movetotarget\n")
 			} else if *e.at_floor != -1 {
 				// Pick new target if no target, and the floor of the elevator is known
 				e.PickTarget()
-				fmt.Printf("At pick target\n")
+				//fmt.Printf("At pick target\n")
 				time.Sleep(50 * time.Millisecond)
 			}
 
@@ -312,7 +312,7 @@ func (e Elevator) Visit_floor() {
 		// Reset target
 		*e.target_floor = -1
 		*e.moving_direction = structs.STILL
-		fmt.Printf("At DOOR_OPEN\n")
+		//fmt.Printf("At DOOR_OPEN\n")
 		//*e.internal_state = structs.DOOR_OPEN
 
 		// // Make sure the correct orders are removed
@@ -340,8 +340,8 @@ func (e Elevator) Visit_floor() {
 
 	}
 	// fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
-	//e._debug_print_internal_states()
-	//e._debug_print_master_data()
+	e._debug_print_internal_states()
+	e._debug_print_master_data()
 
 }
 
@@ -477,7 +477,7 @@ func (e *Elevator) AddElevatorDataToMaster() {
 }
 
 func (e Elevator) ClearOrderFromMaster(floor int, dir [2]bool) {
-	fmt.Printf("Clears order\n")
+	//fmt.Printf("Clears order\n")
 	master_id := e.ms_unit.CURRENT_DATA.MASTER_ID
 	unit_id := e.ms_unit.UNIT_ID
 	if master_id != e.ms_unit.UNIT_ID {
@@ -494,15 +494,15 @@ func (e Elevator) ClearOrderFromMaster(floor int, dir [2]bool) {
 
 	// Clear internal order
 	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id].INTERNAL_BUTTON_ARRAY[floor] = false
-	fmt.Printf("Clear internal up\n")
+	//fmt.Printf("Clear internal up\n")
 
 	// Clear order in the given direction
 	if dir[0] {
-		fmt.Printf("Clear in up\n")
+		//fmt.Printf("Clear in up\n")
 		e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[floor] = false
 	}
 	if dir[1] {
-		fmt.Printf("Clear down\n")
+		//fmt.Printf("Clear down\n")
 		e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = false
 	}
 }
