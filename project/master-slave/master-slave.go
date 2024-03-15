@@ -67,6 +67,7 @@ func (ms *MasterSlave) MainLoop() {
 	peers_port := 33224
 	broadcast_port := 32244
 	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
+
 	Heartbeat(input_id, peers_port, broadcast_port)
 
 	go CheckHeartbeat(ms, peers_port, broadcast_port)
@@ -74,53 +75,58 @@ func (ms *MasterSlave) MainLoop() {
 	// Check if this elevator is Master
 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 
-	own_address := ms.IP_ADDRESS + ms.LISTEN_PORT
+	// Create slave and master message channels
+	slave_messages_channel := make(chan structs.TCPMsg)
+	master_messages_channel := make(chan structs.TCPMsg)
 
-	// Start listening to received data
-	received_messages_channel := make(chan []byte)
-	
-	// Start reading received data
-	go tcp_interface.ReceiveData(own_address, received_messages_channel)
+	slave_input_address := ms.IP_ADDRESS + ms.LISTEN_PORT
+	master_input_address := ms.IP_ADDRESS + ":23456"
+
+	// Put data into slave and master channels
+	go tcp_interface.ReceiveSlaveData(slave_input_address, slave_messages_channel)
+	go tcp_interface.ReceiveMasterData(master_input_address, master_messages_channel)
+
+	time.Sleep(time.Millisecond * 100)
+	fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
 
 	// Main loop of Master-slave
 	for {
 
-		fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
-		time.Sleep(time.Millisecond * 100)
+		has_updated := false
 		if is_master {
-
 			// Run if current elevator is master
-
 			// TODO: Update SystemData:
-		
-		received_data := false
-
-		loop:
+		master_loop:
 			for {
 				select {
-				case data := <-received_messages_channel:
+				case slave_data := <-slave_messages_channel:
 
 					// Notify that an update has occured
-
-					received_data = true
-					fmt.Printf("Test_loop")
+					has_updated = true
+					fmt.Printf("Received Slave Data\n")
 
 					//Decodes the data recieved from slave
-					decoded_data := tcp_interface.DecodeMessage(data)
-					id := decoded_data.Sender_id
+					id := slave_data.Sender_id
+
+					// Update lights on elevator
 					UpdateElevatorLights(ms)
 
-					if decoded_data.MessageType == structs.NEWCABCALL {
-						decoded_message := tcp_interface.DecodeHallOrderMsg(decoded_data.Data)
+					msg_type := slave_data.MessageType
+					fmt.Printf("Message type: %v\n", msg_type)
+					switch msg_type {
+					case structs.NEWCABCALL:
+
+						decoded_message := tcp_interface.DecodeHallOrderMsg(slave_data.Data)
 
 						// Set corresponding cab order to true
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[decoded_message.Order_floor] = true
 
-					} else if decoded_data.MessageType == structs.NEWHALLORDER {
-						decoded_hallOrderMessage := tcp_interface.DecodeHallOrderMsg(decoded_data.Data)
+					case structs.NEWHALLORDER:
+						decoded_hallOrderMessage := tcp_interface.DecodeHallOrderMsg(slave_data.Data)
 
 						clear_floor := decoded_hallOrderMessage.Order_floor
 
+						// Sets the order in the right direction to true
 						if decoded_hallOrderMessage.Order_direction[0] {
 							ms.CURRENT_DATA.UP_BUTTON_ARRAY[clear_floor] = true
 						}
@@ -128,10 +134,10 @@ func (ms *MasterSlave) MainLoop() {
 							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor] = true
 						}
 
-					} else if decoded_data.MessageType == structs.UPDATEELEVATOR {
-						decoded_systemData := tcp_interface.DecodeSystemData(decoded_data.Data)
-						fmt.Printf("Received Decoded data:\n")
-						fmt.Printf("%s", structs.SystemData_to_string(*decoded_systemData))
+					case structs.UPDATEELEVATOR:
+						decoded_systemData := tcp_interface.DecodeSystemData(slave_data.Data)
+						// fmt.Printf("Received Decoded data:\n")
+						// fmt.Printf("%s", structs.SystemData_to_string(*decoded_systemData))
 
 						//Updates the elevator data when message type is UPDATEELEVATOR
 						// ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
@@ -139,10 +145,9 @@ func (ms *MasterSlave) MainLoop() {
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].DIRECTION = decoded_systemData.ELEVATOR_DATA[id].DIRECTION
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_STATE = decoded_systemData.ELEVATOR_DATA[id].INTERNAL_STATE
 
-					} else if decoded_data.MessageType == structs.CLEARHALLORDER {
-
+					case structs.CLEARHALLORDER:
 						//Clears The direction button and the internal button of the cleared floor
-						hallOrderMsg := tcp_interface.DecodeHallOrderMsg(decoded_data.Data)
+						hallOrderMsg := tcp_interface.DecodeHallOrderMsg(slave_data.Data)
 						clear_floor := hallOrderMsg.Order_floor
 						clear_direction := hallOrderMsg.Order_direction
 
@@ -156,51 +161,81 @@ func (ms *MasterSlave) MainLoop() {
 						if clear_direction[1] {
 							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor] = false
 						}
+					default:
+						fmt.Printf("Unrecognized type: %v\n", msg_type)
+						// 	// Send data from master to slave
+						// 	received_master_messages_channel <- data
+
 					}
 
 					// fmt.Printf("data: %s", structs.SystemData_to_string(decoded_data.Data))
 				default:
-					break loop
+					break master_loop
 				}
 			}
 
 			// Update calls, buttons
 			// Update the states of each elevator
 
-			// Increase counter
-			if received_data {
+			// Do if an update to the data has happened
+			if has_updated {
+				// fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
+
+				// Increase counter of data
 				ms.CURRENT_DATA.COUNTER += 1
-				fmt.Printf("Test1")
+				fmt.Printf("Test1\n")
 
 				// Only run when new calls, or update in state of elevator
 				ms.UpdateElevatorTargets()
-				fmt.Printf("Test2")
+				fmt.Printf("Test2\n")
 
 				// Send updated SystemData
 				ms.BroadcastSystemData()
-				fmt.Printf("Test3")
+				fmt.Printf("Test3\n")
+
+				//TODO: Find out if this is neccesary
+				//To make sure data is sent to slave
+				time.Sleep(time.Millisecond * 100)
 			}
-			
 
-		} else {
-			// Run if current elevator is slave
+		}
 
-			// Receive data from master
-			received_data := <-received_messages_channel
-			decoded_data := tcp_interface.DecodeMessage(received_data)
-			decoded_systemData := tcp_interface.DecodeSystemData(decoded_data.Data)
+	slave_loop:
+		for {
+			select {
+			case master_data := <-master_messages_channel:
+				fmt.Printf("Received Master Data\n")
 
-			// Check if the received data is newer then current data, and update current data if so
-			if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
-				ms.CURRENT_DATA = decoded_systemData
+				// // Receive data from master
+				// decoded_data := tcp_interface.DecodeMessage(master_data)
+				decoded_systemData := tcp_interface.DecodeSystemData(master_data.Data)
+
+				// Find type of message
+				master_data_type := master_data.MessageType
+
+				// Check if message is from master
+				switch master_data_type {
+				case structs.MASTERMSG:
+
+					// Check if the received data is newer then current data, and update current data if so
+					if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
+						ms.CURRENT_DATA = decoded_systemData
+					}
+					
+					UpdateElevatorLights(ms)
+				default:
+					fmt.Printf("Unrecognized master message: %d\n", master_data_type)
+				}
+
+			default:
+				break slave_loop
 			}
-			UpdateElevatorLights(ms)
+
 		}
 
 		// calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
 		// ms.ELEVATOR_UNIT.PickTarget(calls)
 
-		// time.Sleep(10 * time.Second)
 	}
 }
 
@@ -222,10 +257,12 @@ func (ms *MasterSlave) BroadcastSystemData() {
 		}
 
 		//Send only data if the slave is alive
-		if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
+		//TODO: Find out if the if statement is needed:
+
+		// if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
 			encoded_system_data = tcp_interface.EncodeMessage(&send_message)
 			tcp_interface.SendData(client_address, encoded_system_data)
-		}
+		// }
 	}
 
 }
@@ -249,7 +286,7 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 }
 
 func UpdateElevatorLights(ms *MasterSlave) {
-	fmt.Printf("Lamp set\n")
+	// fmt.Printf("Lamp set\n")
 	for i := 0; i < structs.N_FLOORS; i++ {
 		if !ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] {
 			elevio.SetButtonLamp(0, i, false)
