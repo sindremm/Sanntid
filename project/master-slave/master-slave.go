@@ -84,7 +84,7 @@ func (ms *MasterSlave) MainLoop() {
 	// Main loop of Master-slave
 	for {
 
-		fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
+		//fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
 		time.Sleep(time.Millisecond * 100)
 		if is_master {
 
@@ -124,8 +124,8 @@ func (ms *MasterSlave) MainLoop() {
 
 					} else if decoded_data.MessageType == structs.UPDATEELEVATOR {
 						decoded_systemData := tcp_interface.DecodeSystemData(decoded_data.Data)
-						fmt.Printf("Received Decoded data:\n")
-						fmt.Printf("%s", structs.SystemData_to_string(*decoded_systemData))
+						//fmt.Printf("Received Decoded data:\n")
+						//fmt.Printf("%s", structs.SystemData_to_string(*decoded_systemData))
 
 						//Updates the elevator data when message type is UPDATEELEVATOR
 						ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
@@ -145,11 +145,11 @@ func (ms *MasterSlave) MainLoop() {
 
 						// Check and clear up and down order
 						if clear_direction[0] {
-							fmt.Printf("Clear in up in master\n")
+							//fmt.Printf("Clear in up in master\n")
 							ms.CURRENT_DATA.UP_BUTTON_ARRAY[clear_floor] = false
 						}
 						if clear_direction[1] {
-							fmt.Printf("Clear in down in master\n")
+							//fmt.Printf("Clear in down in master\n")
 							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor] = false
 						}
 					}
@@ -174,7 +174,7 @@ func (ms *MasterSlave) MainLoop() {
 
 		} else {
 			// Run if current elevator is slave
-			fmt.Printf("Gets to slave code\n")
+			//fmt.Printf("Gets to slave code\n")
 			// Receive data from master
 			received_data := <-received_data_channel
 			decoded_data := tcp_interface.DecodeMessage(received_data)
