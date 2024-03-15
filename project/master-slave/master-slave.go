@@ -128,7 +128,7 @@ func (ms *MasterSlave) MainLoop() {
 						fmt.Printf("%s", structs.SystemData_to_string(*decoded_systemData))
 
 						//Updates the elevator data when message type is UPDATEELEVATOR
-						ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
+						// ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].CURRENT_FLOOR = decoded_systemData.ELEVATOR_DATA[id].CURRENT_FLOOR
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].DIRECTION = decoded_systemData.ELEVATOR_DATA[id].DIRECTION
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_STATE = decoded_systemData.ELEVATOR_DATA[id].INTERNAL_STATE
