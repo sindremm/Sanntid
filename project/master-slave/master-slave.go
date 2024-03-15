@@ -65,13 +65,17 @@ func MakeMasterSlave(UnitID int, port string) *MasterSlave {
 }
 
 func (ms *MasterSlave) StartMasterSlave() {
-	// Heartbeat
-	// fmt.Printf("Start of loop \n")
+	
+	// Change master id if necessary
+	newMasterChoice(ms)
 	peers_port := 33224
 	broadcast_port := 32244
 	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
+
+	// Sends out ip address to peer network
 	Heartbeat(input_id, peers_port, broadcast_port)
 
+	// Checks for other elevators and updates ip addresses
 	go CheckHeartbeat(ms, peers_port, broadcast_port)
 
 	// Create slave and master message channels
@@ -83,11 +87,10 @@ func (ms *MasterSlave) StartMasterSlave() {
 	// Put data into slave and master channels
 	go tcp_interface.ReceiveData(input_address, slave_messages_channel, master_messages_channel)
 
+	// Run master and slave loop
 	go ms.MasterLoop(slave_messages_channel)
 	go ms.SlaveLoop(master_messages_channel)
 
-	fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
-	// Main loop of Master-slave
 
 }
 
@@ -210,6 +213,11 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 
 				// // Receive data from master
 				decoded_systemData := tcp_interface.DecodeSystemData(master_data.Data)
+
+				// Update master if master already exists
+				if decoded_systemData.MASTER_ID != ms.CURRENT_DATA.MASTER_ID {
+					ms.CURRENT_DATA.MASTER_ID = decoded_systemData.MASTER_ID
+				}
 
 				// Find type of message
 				master_data_type := master_data.MessageType
@@ -360,6 +368,9 @@ func UpdateNewConnection(ms *MasterSlave, newElevatorID string) {
 	elevatorNum, elevatorAddress := splitPeerString(newElevatorID)
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = true
+
+	// Updates master id if necessary
+	newMasterChoice(ms)
 }
 
 // Changes alive status when a peer disconnects
@@ -368,25 +379,11 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 		elevatorNum, _ := splitPeerString(lostElevatorID[i])
 		ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = false
 	}
+
+	// Updates master id if necessary
+	newMasterChoice(ms)
 }
 
-//var peerDataMap = make(map[string]elev_structs.SystemData)
-// connectedPeers := []elev_structs.SystemData{}
-// p := <-peers_update_channel
-// fmt.Printf("Peers channel1: %v \n", p)
-
-// for i := 0; i < structs.N_ELEVATORS; i++ {
-// 	if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
-// 		connectedPeers = append(connectedPeers, ms.CURRENT_DATA)
-// 	}
-// }
-// for data, _:= range p.Peers {
-// 	elevatorNum, _ := splitPeerString(data)
-// 		connectedPeers = append(connectedPeers, ms.CURRENT_DATA)
-// }
-// fmt.Printf("Peers channel2: %v \n", connectedPeers)
-// currentMasterId := election.DetermineMaster(strconv.Itoa(ms.UNIT_ID), strconv.Itoa(ms.CURRENT_DATA.MASTER_ID), connectedPeers, isMaster)
-// ms.CURRENT_DATA.MASTER_ID, _ = strconv.Atoi(currentMasterId)
 
 func newMasterChoice(ms *MasterSlave) {
 	if !ms.CURRENT_DATA.ELEVATOR_DATA[ms.CURRENT_DATA.MASTER_ID].ALIVE {
@@ -395,9 +392,7 @@ func newMasterChoice(ms *MasterSlave) {
 				ms.CURRENT_DATA.MASTER_ID = i
 				fmt.Printf("New master: %v\n", ms.CURRENT_DATA.MASTER_ID)
 
-				//ms.MainLoop()
 				break
-				//is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 			}
 		}
 	}
