@@ -110,8 +110,6 @@ func (e Elevator) ElevatorLoop() {
 			// Run when arriving at new floor or when starting from target floor
 			if (*e.at_floor != *e.floor_sensor || *e.floor_sensor == *e.target_floor) && *e.floor_sensor != -1 {
 
-				
-
 				// Set correct floor if not in between floors
 				*e.at_floor = *e.floor_sensor
 
@@ -180,7 +178,7 @@ func (e *Elevator) InterpretOrder(button_order elevio.ButtonEvent) (floor int, b
 
 // Add order to system data
 func (e *Elevator) AddOrderToSystemDAta(floor int, button elevio.ButtonType) {
-	
+
 	switch button {
 	case 0:
 		e.AddHallOrderToMaster(floor, button)
@@ -232,11 +230,12 @@ func (e Elevator) PickTarget() {
 	targets := self.ELEVATOR_TARGETS
 	up_calls := [structs.N_FLOORS]bool{false, false, false, false}
 	down_calls := [structs.N_FLOORS]bool{false, false, false, false}
-
-	for i := 1; i < structs.N_FLOORS; i++ {
+	//fmt.Printf("Targets: %v \n", targets)
+	for i := 0; i < structs.N_FLOORS; i++ {
 		up_calls[i] = targets[i][0]
 		down_calls[i] = targets[i][1]
 	}
+	//fmt.Printf("Targets (UP): %v \n ", up_calls)
 	// Sets new target to closest floor, prioritizing floors above
 
 	// TODO: Add check to see if there are new orders instead of running this loop every time

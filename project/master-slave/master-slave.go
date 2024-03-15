@@ -225,6 +225,7 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 	// Update values in ELEVATOR_TARGETS of SystemData
 	for k := range movement_map {
 		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]].ELEVATOR_TARGETS = movement_map[k]
+		//fmt.Printf("movement_map: %v \n", movement_map)
 	}
 }
 
