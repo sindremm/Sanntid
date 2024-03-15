@@ -108,6 +108,11 @@ func (e Elevator) ElevatorLoop() {
 		case structs.MOVING:
 
 			// Run when arriving at new floor or when starting from target floor
+			if *e.at_floor != -1 {
+				e.PickTarget()
+				e.MoveToTarget()
+			}
+
 			if (*e.at_floor != *e.floor_sensor || *e.floor_sensor == *e.target_floor) && *e.floor_sensor != -1 {
 
 				// Set correct floor if not in between floors
@@ -123,12 +128,7 @@ func (e Elevator) ElevatorLoop() {
 				continue
 			}
 
-			if *e.at_floor != -1 {
-				e.PickTarget()
-				if *e.target_floor != -1 {
-					e.MoveToTarget()
-				}
-			}
+			
 
 		case structs.DOOR_OPEN:
 			e.OpenDoor()
@@ -223,19 +223,22 @@ func (e Elevator) ClearOrdersAtFloor() {
 
 }
 
-func (e Elevator) PickTarget() {
+func (e *Elevator) PickTarget() {
 	self := e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID]
 
 	cab_calls := self.INTERNAL_BUTTON_ARRAY
 	targets := self.ELEVATOR_TARGETS
 	up_calls := [structs.N_FLOORS]bool{false, false, false, false}
 	down_calls := [structs.N_FLOORS]bool{false, false, false, false}
-	//fmt.Printf("Targets: %v \n", targets)
+	
 	for i := 0; i < structs.N_FLOORS; i++ {
 		up_calls[i] = targets[i][0]
 		down_calls[i] = targets[i][1]
 	}
-	//fmt.Printf("Targets (UP): %v \n ", up_calls)
+
+	fmt.Printf("Targets: %v \n", targets)
+	fmt.Printf("Targets (UP): %v \n ", up_calls)
+	fmt.Printf("Targets (DOWN): %v \n ", down_calls)
 	// Sets new target to closest floor, prioritizing floors above
 
 	// TODO: Add check to see if there are new orders instead of running this loop every time
@@ -245,7 +248,7 @@ func (e Elevator) PickTarget() {
 	new_target := -1
 
 	for i := 0; i <= 3; i++ {
-		if *e.at_floor+i < 4 {
+		if *e.at_floor+i < structs.N_FLOORS {
 
 			// Check floors above
 			check_floor := *e.at_floor + i
@@ -257,6 +260,7 @@ func (e Elevator) PickTarget() {
 			// Set target if an order exists on floor
 			if up_calls[check_floor] || down_calls[check_floor] || cab_calls[check_floor] {
 				new_target = check_floor
+				break
 			}
 
 		}
@@ -271,19 +275,18 @@ func (e Elevator) PickTarget() {
 			// Set target if an order exists on floor
 			if up_calls[check_floor] || down_calls[check_floor] || cab_calls[check_floor] {
 				new_target = check_floor
+				break
 			}
 		}
 	}
 
+	fmt.Printf("Picking target new target: %d \n", new_target)
 	*e.target_floor = new_target
 
 	// Update value of master
 }
 
 func (e Elevator) Visit_floor() {
-	fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
-	e._debug_print_internal_states()
-	e._debug_print_master_data()
 
 	// The only time the code reaches this state is during initialization
 	if *e.target_floor == -1 {
@@ -324,7 +327,12 @@ func (e Elevator) Visit_floor() {
 		elevio.SetButtonLamp(1, *e.at_floor, false)
 		elevio.SetButtonLamp(2, *e.at_floor, false)
 
+
+
 	}
+	fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
+	e._debug_print_internal_states()
+	e._debug_print_master_data()
 }
 
 func (e Elevator) TransitionToOpenDoor() {
@@ -356,6 +364,7 @@ func (e Elevator) OpenDoor() {
 
 func (e Elevator) MoveToTarget() {
 	// Set state to MOVING and set motor direction
+	fmt.Printf("Moving to target\n")
 	*e.internal_state = structs.MOVING
 
 	if *e.target_floor > *e.at_floor {
@@ -365,6 +374,8 @@ func (e Elevator) MoveToTarget() {
 		*e.moving_direction = structs.DOWN
 		elevio.SetMotorDirection(elevio.MD_Down)
 	}
+
+	e.AddElevatorDataToMaster()
 }
 
 func (e Elevator) Stop() {
