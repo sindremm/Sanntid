@@ -6,6 +6,7 @@ import (
 	// "os/exec"
 	"strconv"
 	"strings"
+
 	// "time"
 
 	"Driver-go/elevio"
@@ -63,9 +64,9 @@ func MakeMasterSlave(UnitID int, port string) *MasterSlave {
 	return MS
 }
 
-func (ms *MasterSlave) MainLoop() {
+func (ms *MasterSlave) StartMasterSlave() {
 	// Heartbeat
-	fmt.Printf("Start of loop \n")
+	// fmt.Printf("Start of loop \n")
 	peers_port := 33224
 	broadcast_port := 32244
 	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
@@ -106,26 +107,25 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 
 					// Notify that an update has occured
 					has_updated = true
-					fmt.Printf("Received Slave Data\n")
+					// fmt.Printf("Received Slave Data\n")
 
 					//Decodes the data recieved from slave
 					id := slave_data.Sender_id
 
-					// Update lights on elevator
-					UpdateElevatorLights(ms)
-
 					msg_type := slave_data.MessageType
 					switch msg_type {
 					case structs.NEWCABCALL:
-
-						decoded_message := tcp_interface.DecodeHallOrderMsg(slave_data.Data)
+						// Decode cab call
+						decoded_cabCall := tcp_interface.DecodeHallOrderMsg(slave_data.Data)
 
 						// Set corresponding cab order to true
-						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[decoded_message.Order_floor] = true
+						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_BUTTON_ARRAY[decoded_cabCall.Order_floor] = true
 
 					case structs.NEWHALLORDER:
+						// Decode hall
 						decoded_hallOrderMessage := tcp_interface.DecodeHallOrderMsg(slave_data.Data)
 
+						// Find corresponding floor of order
 						clear_floor := decoded_hallOrderMessage.Order_floor
 
 						// Sets the order in the right direction to true
@@ -137,11 +137,12 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 						}
 
 					case structs.UPDATEELEVATOR:
+						// Decode system data
 						decoded_systemData := tcp_interface.DecodeSystemData(slave_data.Data)
 						// fmt.Printf("Received Decoded data:\n")
 						// fmt.Printf("%s", structs.SystemData_to_string(*decoded_systemData))
 
-						//Updates the elevator data when message type is UPDATEELEVATOR
+						//Insert data into SystemData
 						// ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].CURRENT_FLOOR = decoded_systemData.ELEVATOR_DATA[id].CURRENT_FLOOR
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].DIRECTION = decoded_systemData.ELEVATOR_DATA[id].DIRECTION
@@ -167,9 +168,6 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 						}
 					default:
 						fmt.Printf("Unrecognized type: %v\n", msg_type)
-						// 	// Send data from master to slave
-						// 	received_master_messages_channel <- data
-
 					}
 
 				default:
@@ -177,12 +175,9 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 				}
 			}
 
-			// Update calls, buttons
-			// Update the states of each elevator
-
-			// Do if an update to the data has happened
+			// Check if there has been an update
 			if has_updated {
-				fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
+				// fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
 
 				// Increase counter of data
 				ms.CURRENT_DATA.COUNTER += 1
@@ -199,7 +194,6 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 
 		// calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
 		// ms.ELEVATOR_UNIT.PickTarget(calls)
-
 	}
 }
 
@@ -209,7 +203,7 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 		for {
 			select {
 			case master_data := <-master_messages_channel:
-				fmt.Printf("Received Master Data\n")
+				// fmt.Printf("Received Master Data\n")
 
 				// // Receive data from master
 				// decoded_data := tcp_interface.DecodeMessage(master_data)
@@ -232,6 +226,8 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 					fmt.Printf("Unrecognized master message: %d\n", master_data_type)
 				}
 
+				// fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
+
 			default:
 				break slave_loop
 			}
@@ -241,29 +237,33 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 }
 
 func (ms *MasterSlave) BroadcastSystemData() {
-	// Send system data to each elevator
-	var encoded_system_data []byte
+
+	// Encode system data
+	encoded_current_data := tcp_interface.EncodeSystemData(ms.CURRENT_DATA)
+
+	// Construct broadcast message
+	send_message := structs.TCPMsg{
+		MessageType: structs.MASTERMSG,
+		Sender_id:   ms.UNIT_ID,
+		Data:        encoded_current_data,
+	}
+
+	// Encode into message
+	encoded_system_data := tcp_interface.EncodeMessage(&send_message)
+
+	// Send message into each elevator
 	for i := 0; i < structs.N_ELEVATORS; i++ {
 		// Find corresponding address of elevator client
 		client_address := ms.CURRENT_DATA.ELEVATOR_DATA[i].ADDRESS
 		if client_address == "" {
 			continue
 		}
-		encoded_current_data := tcp_interface.EncodeSystemData(ms.CURRENT_DATA)
-		// Send system data to client
-		send_message := structs.TCPMsg{
-			MessageType: structs.MASTERMSG,
-			Sender_id:   ms.UNIT_ID,
-			Data:        encoded_current_data,
-		}
 
-		//Send only data if the slave is alive
 		//TODO: Find out if the if statement is needed:
-
-		// if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
-		encoded_system_data = tcp_interface.EncodeMessage(&send_message)
-		tcp_interface.SendData(client_address, encoded_system_data)
-		// }
+		//Send only data if the slave is alive
+		if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
+			tcp_interface.SendData(client_address, encoded_system_data)
+		}
 	}
 
 }
@@ -388,7 +388,6 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 
 func newMasterChoice(ms *MasterSlave) {
 	if !ms.CURRENT_DATA.ELEVATOR_DATA[ms.CURRENT_DATA.MASTER_ID].ALIVE {
-		fmt.Printf("\n1\n")
 		for i := 0; i < structs.N_ELEVATORS; i++ {
 			if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
 				ms.CURRENT_DATA.MASTER_ID = i

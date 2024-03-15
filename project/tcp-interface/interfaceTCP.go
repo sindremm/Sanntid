@@ -90,7 +90,6 @@ func ReceiveData(listen_address string, slave_message_channel chan structs.TCPMs
 
 	// Runs for loop to wait for message
 	for {
-		fmt.Printf("Receiving data\n")
 		// Accepts message if received
 		conn, err := l.Accept()
 		//fmt.Printf("\n accept: %t", conn)
@@ -113,13 +112,12 @@ func ReceiveData(listen_address string, slave_message_channel chan structs.TCPMs
 			decoded_message := DecodeMessage(read_message)
 			message_type := decoded_message.MessageType
 
-			// fmt.Printf("Recieved message in reader. Type: %d\n", decoded_message.MessageType)
+			
+			// Send messages to channels
 			switch message_type {
 			case structs.NEWCABCALL, structs.NEWHALLORDER, structs.UPDATEELEVATOR, structs.CLEARHALLORDER:
-				fmt.Printf("Gotten slave data message\n")
 				slave_message_channel <- *decoded_message
 			case structs.MASTERMSG:
-				fmt.Printf("GOTTEN master data message\n")
 				master_message_channel <- *decoded_message
 			default:
 			}
