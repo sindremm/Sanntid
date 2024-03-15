@@ -214,9 +214,9 @@ func (e Elevator) ClearOrdersAtFloor() {
 	// e.down_button_array[*e.at_floor] = false
 
 	// Reset all lights
-	elevio.SetButtonLamp(0, *e.at_floor, false)
-	elevio.SetButtonLamp(1, *e.at_floor, false)
-	elevio.SetButtonLamp(2, *e.at_floor, false)
+	// elevio.SetButtonLamp(0, *e.at_floor, false)
+	// elevio.SetButtonLamp(1, *e.at_floor, false)
+	// elevio.SetButtonLamp(2, *e.at_floor, false)
 	// }
 
 }
@@ -286,18 +286,6 @@ func (e *Elevator) PickTarget() {
 
 	// fmt.Printf("Picking target new target: %d \n", new_target)
 	*e.target_floor = new_target
-
-	for i := 0; i < structs.N_FLOORS; i++ {
-		if e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[i] == false {
-			elevio.SetButtonLamp(0, i, false)
-		}
-		if e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[i] == false {
-			elevio.SetButtonLamp(1, i, false)
-		}
-		if e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID].INTERNAL_BUTTON_ARRAY[i] == false {
-			elevio.SetButtonLamp(2, i, false)
-		}
-	}
 	// Update value of master
 }
 
@@ -312,7 +300,7 @@ func (e Elevator) Visit_floor() {
 
 	if *e.at_floor == *e.target_floor {
 		// Reset internal button
-		elevio.SetButtonLamp(2, *e.at_floor, false)
+		//elevio.SetButtonLamp(2, *e.at_floor, false)
 		fmt.Printf("Lamp internal set \n")
 
 		// Reset target
@@ -339,9 +327,9 @@ func (e Elevator) Visit_floor() {
 		e.TransitionToOpenDoor()
 
 		// TODO: Figure out logic when several buttons are pressed at target
-		elevio.SetButtonLamp(0, *e.at_floor, false)
-		elevio.SetButtonLamp(1, *e.at_floor, false)
-		elevio.SetButtonLamp(2, *e.at_floor, false)
+		// elevio.SetButtonLamp(0, *e.at_floor, false)
+		// elevio.SetButtonLamp(1, *e.at_floor, false)
+		// elevio.SetButtonLamp(2, *e.at_floor, false)
 
 	}
 	fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)

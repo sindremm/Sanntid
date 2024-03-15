@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	// "Driver-go/elevio"
+	"Driver-go/elevio"
 
 	scheduler "elevator/elevator-scheduler"
 	"elevator/structs"
@@ -102,6 +102,7 @@ func (ms *MasterSlave) MainLoop() {
 					//Decodes the data recieved from slave
 					decoded_data := tcp_interface.DecodeMessage(data)
 					id := decoded_data.Sender_id
+					updateElevatorLights(ms)
 
 					if decoded_data.MessageType == structs.NEWCABCALL {
 						decoded_message := tcp_interface.DecodeHallOrderMsg(decoded_data.Data)
@@ -176,6 +177,7 @@ func (ms *MasterSlave) MainLoop() {
 			if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
 				ms.CURRENT_DATA = decoded_systemData
 			}
+			updateElevatorLights(ms)
 		}
 
 		// calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
@@ -227,6 +229,21 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]].ELEVATOR_TARGETS = movement_map[k]
 		//fmt.Printf("movement_map: %v \n", movement_map)
 	}
+}
+
+func updateElevatorLights(ms *MasterSlave) {
+	for i := 0; i < structs.N_FLOORS; i++ {
+		if ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] == false {
+			elevio.SetButtonLamp(0, i, false)
+		}
+		if ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[i] == false {
+			elevio.SetButtonLamp(1, i, false)
+		}
+		if ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].INTERNAL_BUTTON_ARRAY[i] == false {
+			elevio.SetButtonLamp(2, i, false)
+		}
+	}
+	time.Sleep(50 * time.Millisecond)
 }
 
 // // HandleOrderFromMaster is a method on the MasterSlave struct that processes an order from the master.
