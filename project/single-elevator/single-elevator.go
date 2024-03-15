@@ -115,7 +115,7 @@ func (e Elevator) ElevatorLoop() {
 		case structs.MOVING:
 
 			// Run when arriving at new floor or when starting from target floor
-			if *e.at_floor != -1 {
+			if *e.floor_sensor != -1 {
 				e.PickTarget()
 				e.MoveToTarget()
 			}
@@ -443,7 +443,13 @@ func (e Elevator) AddHallOrderToMaster(floor int, button elevio.ButtonType) {
 
 func (e *Elevator) AddElevatorDataToMaster() {
 	// Encode data
-	encoded_data := tcp_interface.EncodeSystemData(e.ms_unit.CURRENT_DATA)
+	data_copy := e.ms_unit.CURRENT_DATA
+	id := e.ms_unit.UNIT_ID
+	data_copy.ELEVATOR_DATA[id].CURRENT_FLOOR = *e.at_floor
+	data_copy.ELEVATOR_DATA[id].DIRECTION = *e.moving_direction
+	data_copy.ELEVATOR_DATA[id].INTERNAL_STATE = *e.internal_state
+
+	encoded_data := tcp_interface.EncodeSystemData(data_copy)
 
 	// Send data to master
 	e._message_data_to_master(encoded_data, structs.UPDATEELEVATOR)

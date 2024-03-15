@@ -141,6 +141,9 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 						decoded_systemData := tcp_interface.DecodeSystemData(slave_data.Data)
 						// fmt.Printf("Received Decoded data:\n")
 						// fmt.Printf("%s", structs.SystemData_to_string(*decoded_systemData))
+						fmt.Printf("Received floor: %d\n", decoded_systemData.ELEVATOR_DATA[id].CURRENT_FLOOR)
+						fmt.Printf("Received direction: %d\n", decoded_systemData.ELEVATOR_DATA[id].DIRECTION)
+						fmt.Printf("Received INTERNAL_STATE: %d\n", decoded_systemData.ELEVATOR_DATA[id].INTERNAL_STATE)
 
 						//Insert data into SystemData
 						// ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
@@ -206,7 +209,6 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 				// fmt.Printf("Received Master Data\n")
 
 				// // Receive data from master
-				// decoded_data := tcp_interface.DecodeMessage(master_data)
 				decoded_systemData := tcp_interface.DecodeSystemData(master_data.Data)
 
 				// Find type of message
@@ -226,7 +228,7 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 					fmt.Printf("Unrecognized master message: %d\n", master_data_type)
 				}
 
-				// fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
+				fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
 
 			default:
 				break slave_loop
