@@ -256,67 +256,100 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 // 	return nil
 // }
 
-// func (ms *structs.SystemData) SwitchToBackup() {
-// 	ms.SENDER = 0
-// 	fmt.Println("Master is dead, switching to backup")
+// // Create a MasterSlave
+// func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterSlave {
+// 	MS := new(MasterSlave)
+	
+// 	// Initialize current data
+// 	SD := structs.SystemData{
+//         MASTER_ID: 0,
+//         UP_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
+//         DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
+//         ELEVATOR_DATA: &([structs.N_ELEVATORS]structs.ElevatorData{}),
+//         COUNTER: 0,
+//     }
+
+// 	// Set data
+// 	MS.CURRENT_DATA = &SD
+	
+// 	// Set identifying ID of unit
+// 	MS.UNIT_ID = UnitID
+	
+// 	// Set corresponding elevator
+// 	MS.ELEVATOR_UNIT = elevator
+
+// 	// Set the port where tcp messages are received
+// 	MS.LISTEN_PORT = port
+
+// 	// Start threads
+// 	go elevator.Main()
+
+// 	return MS
 // }
 
 var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 
-// func StartMasterSlave(leader *MasterSlave) {
-// 	//Set the leader as the Master
-// 	leader.Master = true
-
-// 	// start_time := time.Now()
-// 	print_counter := time.Now()
-// 	counter := 0
-
-// 	ms := &MasterSlave{}
+// func (ms *MasterSlave) MainLoop() {
+// 	// Check if this elevator is Master
+// 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 
 // 	filename := "/home/student/Documents/AjananMiaSindre/Sanntid/exercise_4/main.go"
 
-// 	listener, err := net.Listen("tcp", fullAddress)
-// 	if err != nil {
-// 		fmt.Printf("Error creating TCP listener: %v\n", err)
-// 		return
-// 	}
-// 	defer listener.Close()
+// 			// TODO: Update SystemData:
+// 			// Update calls, buttons
+// 			// Update the states of each elevator
+// 			// UpdateElevatorTargets() (Only run when new calls, or update in state of elevator)
+// 			// Increase counter
 
-// 	exec.Command("gnome-terminal", "--", "go", "run", filename).Run()
+
+// 			// Send updated SystemData
+// 			ms.BroadcastSystemData()
+			
+		
+		
+// 		} else {
+// 			// Run if current elevator is slave
+
+// 			// Receive data from master
+// 			own_address := ms.IP_ADDRESS + ms.LISTEN_PORT 
+// 			received_data := new(structs.SystemData)
+// 			tcp_interface.ReceiveSystemData(own_address, received_data)
+
+// 			// Check if the received data is newer then current data, and update current data if so 
+// 			if received_data.COUNTER > ms.CURRENT_DATA.COUNTER {
+// 				ms.CURRENT_DATA = received_data
+// 			}
+
+// 			calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
+// 			ms.ELEVATOR_UNIT.PickTarget(calls)
+			
+// 		}
+// 	}
+
+// }
+
+// func (ms *MasterSlave) BroadcastSystemData() {
+// 	// Send system data to each elevator
+// 	for i := 0; i < structs.N_ELEVATORS; i++ {
+// 		// Find corresponding address of elevator client
+// 		client_address := ms.CURRENT_DATA.ELEVATOR_DATA[i].ADDRESS
+// 		// Send system data to client
+// 		tcp_interface.SendSystemData(client_address, ms.CURRENT_DATA)
+// 	}
+	
+// }
+
+// // Read from the channels and put data into variables
+// func (ms *MasterSlave) ReadButtons(button_order chan elevio.ButtonEvent) {
 
 // 	for {
-// 		conn, err := listener.Accept()
-// 		if err != nil {
-// 			fmt.Printf("Error accepting TCP connection: %v\n", err)
-// 			continue
-// 		}
-
-// 		// Handle incoming TCP connection
-// 		go func(conn net.Conn) {
-// 			defer conn.Close()
-
-// 			// Receive SystemData from the master
-// 			data := &structs.SystemData{}
-// 			if err := network.receiveSystemData(conn, data); err != nil {
-// 				fmt.Printf("Error receiving SystemData: %v\n", err)
-// 				return
-// 			}
-
-// 			// Process received SystemData
-// 			// (Add your logic here based on the received data)
-
-// 		}(conn)
-
-// 		// Send SystemData to the master periodically
-// 		if time.Since(print_counter).Seconds() > 1 {
-// 			counter++
-// 			ms.CURRENT_DATA.COUNTER = counter
-// 			if err := network.sendSystemData(conn, ms.CURRENT_DATA); err != nil {
-// 				fmt.Printf("Error sending SystemData: %v\n", err)
-// 			}
-
-// 			fmt.Printf("%d\n", counter)
-// 			print_counter = time.Now()
+// 		select {
+// 		case bo := <-button_order:
+// 			// Transform order to readable format
+// 			floor, btn := ms.InterpretOrder(bo)
+// 			// Add order to internal array and set lights
+// 			ms.AddOrderToSystemDAta(floor, btn)
+// 			elevio.SetButtonLamp(btn, floor, true)
 // 		}
 // 	}
 // }
@@ -332,23 +365,24 @@ var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
 // 	if err := encoder.Encode(data); err != nil {
 // 		return fmt.Errorf("failed to encode SystemData: %v", err)
 // 	}
-// 	// If no error occurred, return nil
-// 	return nil
 // }
 
-// // receiveSystemData is a function that receives SystemData over a TCP connection.
-// // It takes a net.Conn object representing the connection and a pointer to the SystemData object where the received data will be stored.
-// // It returns an error if any occurs during the process.
-// func receiveSystemData(conn net.Conn, data *structs.SystemData) error {
-// 	// Create a new decoder that will read from conn
-// 	decoder := gob.NewDecoder(conn)
-// 	// Decode the received data and store it in the SystemData object
-// 	// If an error occurs during decoding, wrap it in a new error indicating that decoding failed
-// 	if err := decoder.Decode(data); err != nil {
-// 		return fmt.Errorf("failed to decode SystemData: %v", err)
+
+// func (ms *MasterSlave) UpdateElevatorTargets() {
+// 	// Get new elevator targets
+// 	movement_map := *scheduler.CalculateElevatorMovement(*(ms.CURRENT_DATA))
+
+// 	// Map to convert from map of elevators to array of elevators
+// 	key_to_int_map := map[string]int{
+// 		"one": 1,
+// 	 	"two": 2, 
+// 		"three": 3,
 // 	}
-// 	// If no error occurred, return nil
-// 	return nil
+	
+// 	// Update values in ELEVATOR_TARGETS of SystemData
+// 	for k := range movement_map {
+// 		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]].ELEVATOR_TARGETS = movement_map[k];
+// 	}
 // }
 
 // //TODO: Implement function to check if the new targets differ from the current ones

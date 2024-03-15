@@ -8,37 +8,37 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	//"strconv"
 	"strings"
 	"sync"
 	"time"
-	"elevator/network/bcast"
+	bcast "elevator/network/bcast"
 	"elevator/network/peers"
-	"elevator/structs"
-	"elevator/network/"
+	elev_structs "elevator/structs"
+	tcp_interface "elevator/tcp-interface"
 )
+
 //TODO: endre navnet fra raft-agortihm2 til election_algorithm
 
 //TODO: Find a more appropiate name for struct
-type Elevator struct {
+type ElectionHandler struct {
 	Id              int
 	Leader          bool
 	LeaderID        int
 	LastHeartbeat   time.Time
-	Elevators       []*Elevator
+	Elevators       []*ElectionHandler
 	Acknowledgement chan bool
 	VotesReceived   int
 	Term int
 	VotedInTerm int
 	IsElectionStarter bool
 	PORT int
+	Address string
 
 	//TCP connection
 	Conn   net.Conn
 	ID     string
 	Timestamp int64
 	Master bool
-
 }
 
 // VoteMsg represents a vote message
@@ -55,46 +55,71 @@ type State struct {
 	LastHeartbeat time.Time `json:"last_heartbeat"`
 }
 
-func NewElevator(id int, conn net.Conn) *Elevator {
-	return &Elevator{
+func NewElevator(id int, conn net.Conn) *ElectionHandler {
+	return &ElectionHandler{
 		Id:              id,
 		Leader:          false,
-		Elevators:       make([]*Elevator, 0),
+		Elevators:       make([]*ElectionHandler, 0),
 		Acknowledgement: make(chan bool),
 		Conn:            conn,
 	}
 }
 
 
-// BroadcastID sends the ID of the current elevator to all other elevators.
-func (e *Elevator) BroadcastID() {
+func (e *ElectionHandler) BroadcastID() {
 	// Create a WaitGroup to wait for all goroutines to finish.
 	var wg sync.WaitGroup
+	// Create a channel to signal when all acknowledgments are received.
+	allAckReceived := make(chan struct{})
+	message := &elev_structs.SystemData{ID: e.Id}
+	
 	// Iterate over all elevators.
 	for _, elevator := range e.Elevators {
 		// Increment the WaitGroup counter.
 		wg.Add(1)
 		// Start a new goroutine for each elevator.
-		go func(elevator *Elevator) {
+		go func(elevator *ElectionHandler) {
 			// Decrement the WaitGroup counter when the goroutine completes.
 			defer wg.Done()
-			// Use a select statement to implement a timeout.
-			select {
-			// If no response is received within 5 seconds, assume a network failure.
-			case <-time.After(5 * time.Second): // Timeout after 5 seconds
-				fmt.Println("Network failure detected. Starting new election.")
-				// Start a new election.
-				e.StartElection()
-			// If a response is received, process it.
-			case <-elevator.Acknowledgement:
-			}
+
+			// Simulate sending the message over TCP to the current elevator.
+			// In a real implementation, replace this with actual message sending logic.
+			fmt.Printf("Sending message to elevator %d\n", elevator.Id)
+
+			// Create a new message with the elevator's ID.
+			tcp_interface.SendSystemData(elevator.Address, message)
+
+			// Simulate receiving acknowledgment from the current elevator.
+			// In a real implementation, replace this with acknowledgment logic.
+			// Here, we assume that the acknowledgment is received immediately after sending the message.
+			fmt.Printf("Received acknowledgment from elevator %d\n", elevator.Id)
+
+			// Send true on the Acknowledgement channel.
+			elevator.Acknowledgement <- true
 		}(elevator)
 	}
-	// Wait for all goroutines to finish.
-	wg.Wait()
+
+	// Start a goroutine to wait for all acknowledgments.
+	go func() {
+		// Wait for all goroutines to finish.
+		wg.Wait()
+		// Signal that all acknowledgments are received.
+		close(allAckReceived)
+	}()
+
+	// Wait for all acknowledgments to be received or for a timeout.
+	select {
+	case <-allAckReceived:
+		fmt.Println("All acknowledgments received")
+	case <-time.After(10 * time.Second): // Adjust timeout duration as needed
+		fmt.Println("Timeout: Not all acknowledgments received")
+		// If acknowledgments have not been received from all elevators, handle the situation accordingly.
+		// For example, you could start a new election here.
+	}
 }
 
-func (e *Elevator) ReceiveBroadcast(id int) {
+
+func (e *ElectionHandler) ReceiveBroadcast(id int) {
 	if id > e.Id {
 		e.Acknowledgement <- true
 	}
@@ -102,28 +127,20 @@ func (e *Elevator) ReceiveBroadcast(id int) {
 
 
 // SendVote sends a vote to all other elevators.
-func (e *Elevator) SendVote(vote int) {
+func (e *ElectionHandler) SendVote(vote int) {
 	// Only send a vote if the elevator has not already voted in the current term.
 	if e.VotedInTerm != e.Term {
 		// Create a new vote message with the elevator's ID, the current term, and the vote.
 		voteMsg := VoteMsg{ID: e.ID, Term: e.Term, Vote: vote}
 
-		// Define the base port number. Replace with the actual base port number.
-		basePort := 15657 
-
 		// Loop over all elevators in the system.
-		for i, elevator := range e.Elevators {
+		for _, elevator := range e.Elevators {
 			// If the current elevator is not the one sending the vote...
 			if elevator.ID != e.ID {
-				// Create a new channel for sending vote messages.
-				voteChannel := make(chan VoteMsg)
-				
-				// Start a new goroutine that transmits vote messages to the current elevator.
-				// The port number is calculated as the base port number plus the index of the elevator.
-				go bcast.Transmitter(basePort + i, voteChannel)
-				
 				// Send the vote message to the current elevator.
-				voteChannel <- voteMsg
+				go func(elevator *ElectionHandler) {
+					elevator.ReceiveVote(voteMsg)
+				}(elevator)
 			}
 		}
 
@@ -135,18 +152,30 @@ func (e *Elevator) SendVote(vote int) {
 	}
 }
 
+// ReceiveVote receives a vote message from another elevator.
+func (e *ElectionHandler) ReceiveVote(voteMsg VoteMsg) {
+	// Process the received vote.
+	fmt.Printf("Received vote for term %d\n", voteMsg.Term)
+	if voteMsg.Term > e.Term {
+		e.Term = voteMsg.Term
+		e.Leader = false
+	} else if voteMsg.Term == e.Term {
+		e.VotesReceived++
+	}
+}
+
 // ReceiveVotes receives votes from other elevators.
-func (e *Elevator) ReceiveVotes() {
+func (e *ElectionHandler) ReceiveVotes() {
 	// If this elevator did not start the election, return immediately.
 	if !e.IsElectionStarter {
 		return
 	}
 
-	// Create a new channel to receive Elevator objects.
-	voteChan := make(chan Elevator)
+	// Create a new channel to receive vote messages.
+	voteChan := make(chan VoteMsg)
 	
-	// Start receiving Elevator objects on the specified port and send them to the voteChan.
-	bcast.Receiver(e.PORT, voteChan)
+	// Start receiving vote messages on the specified port and send them to the voteChan.
+	go bcast.Receiver(e.PORT, voteChan)
 
 	// Create a timer for the vote receiving process.
 	// After the specified duration, the timer will send a message on its channel.
@@ -156,15 +185,9 @@ func (e *Elevator) ReceiveVotes() {
 	for {
 		select {
 		// When a vote is received on the voteChan...
-		case vote := <-voteChan:
+		case voteMsg := <-voteChan:
 			// Process the vote.
-			fmt.Printf("Received vote for term %d\n", vote.Term)
-			if vote.Term > e.Term {
-				e.Term = vote.Term
-				e.Leader = false
-			} else if vote.Term == e.Term {
-				e.VotesReceived++
-			}
+			e.ReceiveVote(voteMsg)
 		// When the timer expires...
 		case <-voteTimeout.C:
 			// Stop the vote receiving process and return.
@@ -174,48 +197,75 @@ func (e *Elevator) ReceiveVotes() {
 	}
 }
 
+func (e *ElectionHandler) CheckAcknowledgement() {
+	// Create a WaitGroup to wait for all goroutines to finish.
+	var wg sync.WaitGroup
+	// Create a channel to signal when all acknowledgments are received.
+	allAckReceived := make(chan struct{})
 
-// CheckAcknowledgements waits for acknowledgements from other elevators.
-func (e *Elevator) CheckAcknowledgements() {
-	// Initialize a counter for the number of acknowledgements received.
-	ackCount := 0
+	// Iterate over all elevators.
+	for _, elevator := range e.Elevators {
+		// Increment the WaitGroup counter.
+		wg.Add(1)
+		// Start a new goroutine for each elevator.
+		go func(elevator *ElectionHandler) {
+			// Decrement the WaitGroup counter when the goroutine completes.
+			defer wg.Done()
 
-	// Use a loop to keep checking for acknowledgements.
-	for {
-		select {
-		// If an acknowledgement is received, increment the counter.
-		case <-e.Acknowledgement:
-			ackCount++
-			// If all acknowledgements have been received, return.
-			if ackCount == len(e.Elevators) {
-				return
-			}
-		// If no acknowledgements are received within a certain time, declare this elevator as the leader.
-		case <-time.After(5 * time.Second):
-			if e.VotesReceived > len(e.Elevators)/2 {
-				e.Leader = true
-			} else {
-				e.Leader = false
-			}
-			return // Add this line to exit the function after the timeout
-		}
+			// Create a SystemData object with the elevator's ID.
+			systemData := &elev_structs.SystemData{ID: e.Id}
+
+			// Simulate sending the elevator's ID over TCP to the current elevator.
+			// In a real implementation, replace this with actual TCP communication.
+			fmt.Printf("Sending ID %d to elevator %d over TCP\n", e.Id, elevator.Id)
+
+			// Update the code to use the Address field.
+			tcp_interface.SendSystemData(elevator.Address, systemData)
+
+			// Simulate receiving acknowledgment from the current elevator.
+			// In a real implementation, replace this with acknowledgment logic.
+			// Here, we assume that the acknowledgment is received immediately after sending the ID.
+			fmt.Printf("Received acknowledgment from elevator %d\n", elevator.Id)
+
+			// Send true on the Acknowledgement channel.
+			elevator.Acknowledgement <- true
+		}(elevator)
+	}
+
+	// Start a goroutine to wait for all acknowledgments.
+	go func() {
+		// Wait for all goroutines to finish.
+		wg.Wait()
+		// Signal that all acknowledgments are received.
+		close(allAckReceived)
+	}()
+
+	// Wait for all acknowledgments to be received or for a timeout.
+	select {
+	case <-allAckReceived:
+		fmt.Println("All acknowledgments received")
+	case <-time.After(10 * time.Second): // Adjust timeout duration as needed
+		fmt.Println("Timeout: Not all acknowledgments received")
+		// If acknowledgments have not been received from all elevators, handle the situation accordingly.
+		// For example, you could start a new election here.
 	}
 }
 
-func (e *Elevator) AddElevator(addr string) {
-	//connect to the other elevator
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		fmt.Println("Failed to connect to elevator:", err)
-		return
-	}
+//TODO: Er denne viktig?
+// func (e *ElectionHandler) AddElevator(addr string) {
+// 	//connect to the other elevator
+// 	conn, err := net.Dial("tcp", addr)
+// 	if err != nil {
+// 		fmt.Println("Failed to connect to elevator:", err)
+// 		return
+// 	}
 
-	e.Conn = conn
-}
+// 	e.Conn = conn
+// }
 
 
 
-func (e *Elevator) StartElection() {
+func (e *ElectionHandler) StartElection() {
 	//TODO: Gi dem et fint hjem
 	//Ports for checking for life
 	broadcast_port := 33344
@@ -235,17 +285,14 @@ func (e *Elevator) StartElection() {
 	// Broadcast the elevator's ID to all other elevators. FUNKER
 	e.BroadcastID()
 
+	//Receive Broadcast
+	e.ReceiveBroadcast(e.Id)
+
 	// Send a vote for itself to all other elevators.
 	e.SendVote(e.Id)
-	fmt.Printf("Hei 4")
-
-	// Check for acknowledgements from other elevators. If no acknowledgements are received,this elevator declares itself as the leader.
-	e.CheckAcknowledgements()
-	fmt.Printf("Hei 5")
 
 	// Receive votes from other elevators. If a higher vote is received, this elevator is not the leader.
 	e.ReceiveVotes()
-	fmt.Printf("Hei 6")
 
 	// If no acknowledgements are received, declare this elevator as the leader.
 	if e.Leader {
@@ -255,12 +302,11 @@ func (e *Elevator) StartElection() {
 	} else {
 		fmt.Println("This elevator is not the leader.")
 	}
-	fmt.Printf("Hei 6")
 }
 
 // SaveState saves the current state of the elevator to a JSON file.
 // The state includes the ID of the leader and the time of the last heartbeat.
-func (e *Elevator) SaveState() {
+func (e *ElectionHandler) SaveState() {
 	// Create a new state object with the current leader ID and last heartbeat time.
 	state := State{
 		LeaderID:      e.LeaderID,
@@ -283,7 +329,7 @@ func (e *Elevator) SaveState() {
 
 // LoadState loads the state of the elevator from a JSON file.
 // The state includes the ID of the leader and the time of the last heartbeat.
-func (e *Elevator) LoadState() {
+func (e *ElectionHandler) LoadState() {
 	// Open the file that contains the saved state. The file name includes the ID of the elevator.
 	file, err := os.Open(fmt.Sprintf("elevator_%d_state.json", e.Id))
 	if err != nil {
@@ -305,7 +351,7 @@ func (e *Elevator) LoadState() {
 	e.LastHeartbeat = state.LastHeartbeat
 }
 
-func (e *Elevator) WriteStateToFile() {
+func (e *ElectionHandler) WriteStateToFile() {
 	//Open the file for writing
 	file, err := os.OpenFile("elevator_state.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -326,7 +372,7 @@ func TestElevator(argsForPorts string) {
 	ports := strings.Split(argsForPorts, ",")
 
 	//Initialize the elevators
-	elevators := make([]*Elevator, len(ports))
+	elevators := make([]*ElectionHandler, len(ports))
 	for i, port := range ports {
 		//Connect to the other elevator
 		conn, err := net.Dial("tcp", "localhost:"+port)
@@ -348,8 +394,7 @@ func TestElevator(argsForPorts string) {
 		if elevator.Leader {
 			fmt.Println("Elevator is the leader")
 			// Start the Master-Slave algorithm with the leader as the Master
-			// Assuming StartMasterSlave is defined elsewhere in your code
-			StartMasterSlave(elevator)
+			//StartMasterSlave(elevator)
 		} else {
 			fmt.Println("Elevator is not the leader")
 		}
@@ -360,5 +405,7 @@ func TestElevator(argsForPorts string) {
 		time.Sleep(time.Minute)
 	}
 }
+
+
 
 
