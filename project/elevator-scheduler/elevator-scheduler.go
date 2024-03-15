@@ -13,6 +13,7 @@ import (
 
 // Create the argument in the correct format for the cost function
 func assembleArgument(systemData structs.SystemData) MessageStruct {
+	
 
 	// Create empty struct to store data
 	new_argument := MessageStruct{}
@@ -48,6 +49,7 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 		new_state.Behaviour = state_to_behaviour(state)
 		new_state.Floor = state.CURRENT_FLOOR
 		new_state.Direction = direction_strings[state.DIRECTION]
+		// fmt.Printf("Scheduler direction: %s\n", new_state.Direction)
 		new_state.CabRequests = (*systemData.ELEVATOR_DATA)[i].INTERNAL_BUTTON_ARRAY
 
 		// Set the values for the corresponding elevator
@@ -64,13 +66,13 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 // Translate the elevators state to the corresponding string value
 func state_to_behaviour(state structs.ElevatorData) string {
 	// TODO: Find correct corresponding states
-	if state.INTERNAL_STATE == 0 {
+	if state.INTERNAL_STATE == structs.IDLE {
 		return "idle"
 	}
-	if state.INTERNAL_STATE == 1 {
+	if state.INTERNAL_STATE == structs.MOVING {
 		return "moving"
 	}
-	if state.INTERNAL_STATE == 2 {
+	if state.INTERNAL_STATE == structs.DOOR_OPEN {
 		return "doorOpen"
 	}
 

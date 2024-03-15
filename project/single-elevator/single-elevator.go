@@ -110,11 +110,13 @@ func (e Elevator) ElevatorLoop() {
 			// Run when arriving at new floor or when starting from target floor
 			if (*e.at_floor != *e.floor_sensor || *e.floor_sensor == *e.target_floor) && *e.floor_sensor != -1 {
 
-				// Update value of master
-				e.AddElevatorDataToMaster()
+				
 
 				// Set correct floor if not in between floors
 				*e.at_floor = *e.floor_sensor
+
+				// Update value of master
+				e.AddElevatorDataToMaster()
 
 				elevio.SetFloorIndicator(*e.at_floor)
 
@@ -241,6 +243,7 @@ func (e Elevator) PickTarget() {
 
 	// This code can be reworked to better adhere to the DRY-principle
 	// Check floors above
+	new_target := -1
 
 	for i := 0; i <= 3; i++ {
 		if *e.at_floor+i < 4 {
@@ -254,8 +257,7 @@ func (e Elevator) PickTarget() {
 
 			// Set target if an order exists on floor
 			if up_calls[check_floor] || down_calls[check_floor] || cab_calls[check_floor] {
-				*e.target_floor = check_floor
-				return
+				new_target = check_floor
 			}
 
 		}
@@ -269,13 +271,14 @@ func (e Elevator) PickTarget() {
 
 			// Set target if an order exists on floor
 			if up_calls[check_floor] || down_calls[check_floor] || cab_calls[check_floor] {
-				*e.target_floor = check_floor
-				return
+				new_target = check_floor
 			}
 		}
 	}
 
-	*e.target_floor = -1
+	*e.target_floor = new_target
+
+	// Update value of master
 }
 
 func (e Elevator) Visit_floor() {
@@ -324,6 +327,7 @@ func (e Elevator) TransitionToOpenDoor() {
 	elevio.SetMotorDirection(elevio.MD_Stop)
 	elevio.SetDoorOpenLamp(true)
 	*e.internal_state = structs.DOOR_OPEN
+	e.AddElevatorDataToMaster()
 }
 
 func (e Elevator) OpenDoor() {
@@ -427,6 +431,7 @@ func (e Elevator) AddHallOrderToMaster(floor int, button elevio.ButtonType) {
 func (e Elevator) AddElevatorDataToMaster() {
 	master_id := e.ms_unit.CURRENT_DATA.MASTER_ID
 	unit_id := e.ms_unit.UNIT_ID
+	// fmt.Printf("AddData")
 
 	if master_id != unit_id {
 
@@ -436,6 +441,10 @@ func (e Elevator) AddElevatorDataToMaster() {
 		// Send data to master
 		e._message_data_to_master(data, structs.UPDATEELEVATOR)
 	}
+
+	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id].CURRENT_FLOOR = *e.at_floor
+	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id].DIRECTION = *e.moving_direction
+	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id].INTERNAL_STATE = *e.internal_state
 }
 
 func (e Elevator) ClearOrderFromMaster(floor int, dir [2]bool) {

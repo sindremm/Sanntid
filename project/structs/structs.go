@@ -39,7 +39,7 @@ type ElevatorData struct {
 	// TARGETS OF EACH ELEVATOR
 	ELEVATOR_TARGETS [N_FLOORS][2]bool
 	// State machine state of elevator
-	INTERNAL_STATE int
+	INTERNAL_STATE ElevatorState
 	// The last floor the elevator visited
 	CURRENT_FLOOR int
 	//TODO: update usage of direction
