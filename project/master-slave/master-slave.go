@@ -231,7 +231,7 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 	}
 }
 
-func updateElevatorLights(ms *MasterSlave) {
+func updateElevatorLights (ms *MasterSlave) {
 	for i := 0; i < structs.N_FLOORS; i++ {
 		if ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] == false {
 			elevio.SetButtonLamp(0, i, false)
@@ -243,7 +243,7 @@ func updateElevatorLights(ms *MasterSlave) {
 			elevio.SetButtonLamp(2, i, false)
 		}
 	}
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500*time.Millisecond)
 }
 
 // // HandleOrderFromMaster is a method on the MasterSlave struct that processes an order from the master.
