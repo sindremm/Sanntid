@@ -2,10 +2,12 @@ package master_slave
 
 import (
 	"fmt"
+	//"time"
 	// "net"
 	// "os/exec"
 	"strconv"
 	"strings"
+
 	// "time"
 
 	"Driver-go/elevio"
@@ -65,6 +67,7 @@ func MakeMasterSlave(UnitID int, port string) *MasterSlave {
 
 func (ms *MasterSlave) MainLoop() {
 	// Heartbeat
+	newMasterChoice(ms)
 	fmt.Printf("Start of loop \n")
 	peers_port := 33224
 	broadcast_port := 32244
@@ -93,8 +96,8 @@ func (ms *MasterSlave) MainLoop() {
 func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 	for {
 		// Check if this elevator is Master
-		is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 
+		is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 		has_updated := false
 		if is_master {
 			// Run if current elevator is master
@@ -226,6 +229,9 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 					if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
 						ms.CURRENT_DATA = decoded_systemData
 					}
+					if decoded_systemData.MASTER_ID != ms.CURRENT_DATA.MASTER_ID {
+						ms.CURRENT_DATA.MASTER_ID = decoded_systemData.MASTER_ID
+					}
 
 					UpdateElevatorLights(ms)
 				default:
@@ -260,10 +266,10 @@ func (ms *MasterSlave) BroadcastSystemData() {
 		//Send only data if the slave is alive
 		//TODO: Find out if the if statement is needed:
 
-		// if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
-		encoded_system_data = tcp_interface.EncodeMessage(&send_message)
-		tcp_interface.SendData(client_address, encoded_system_data)
-		// }
+		if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
+			encoded_system_data = tcp_interface.EncodeMessage(&send_message)
+			tcp_interface.SendData(client_address, encoded_system_data)
+		}
 	}
 
 }
@@ -358,6 +364,8 @@ func UpdateNewConnection(ms *MasterSlave, newElevatorID string) {
 	elevatorNum, elevatorAddress := splitPeerString(newElevatorID)
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = true
+
+	newMasterChoice(ms)
 }
 
 // Changes alive status when a peer disconnects
@@ -366,6 +374,7 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 		elevatorNum, _ := splitPeerString(lostElevatorID[i])
 		ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = false
 	}
+	newMasterChoice(ms)
 }
 
 //var peerDataMap = make(map[string]elev_structs.SystemData)
@@ -388,7 +397,6 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 
 func newMasterChoice(ms *MasterSlave) {
 	if !ms.CURRENT_DATA.ELEVATOR_DATA[ms.CURRENT_DATA.MASTER_ID].ALIVE {
-		fmt.Printf("\n1\n")
 		for i := 0; i < structs.N_ELEVATORS; i++ {
 			if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
 				ms.CURRENT_DATA.MASTER_ID = i
