@@ -113,6 +113,7 @@ func (e Elevator) ElevatorLoop() {
 				e.PickTarget()
 				e.MoveToTarget()
 			}
+			fmt.Printf("State: >%v", *e.internal_state)
 
 			if (*e.at_floor != *e.floor_sensor || *e.floor_sensor == *e.target_floor) && *e.floor_sensor != -1 {
 
@@ -125,6 +126,7 @@ func (e Elevator) ElevatorLoop() {
 				elevio.SetFloorIndicator(*e.at_floor)
 
 				// Run visit floor routine
+
 				e.Visit_floor()
 				continue
 			}
@@ -194,33 +196,33 @@ func (e *Elevator) AddOrderToSystemDAta(floor int, button elevio.ButtonType) {
 	}
 }
 
-// Clears orders when they appear at the same floor as the elevator
-func (e Elevator) ClearOrdersAtFloor() {
-	// // Check if any of the orders are for the current floor
-	// if e.internal_button_array[*e.at_floor] || e.up_button_array[*e.at_floor] || e.down_button_array[*e.at_floor] {
-	// 	// fmt.Printf("ClearOrdersAtFloor\n")
+// // Clears orders when they appear at the same floor as the elevator
+// func (e Elevator) ClearOrdersAtFloor() {
+// 	// // Check if any of the orders are for the current floor
+// 	// if e.internal_button_array[*e.at_floor] || e.up_button_array[*e.at_floor] || e.down_button_array[*e.at_floor] {
+// 	// 	// fmt.Printf("ClearOrdersAtFloor\n")
 
-	//TODO: Handle Clear orders at floor
+// 	//TODO: Handle Clear orders at floor
 
-	// Open door
-	e.TransitionToOpenDoor()
+// 	// Open door
+// 	e.TransitionToOpenDoor()
 
-	if *e.target_floor == *e.at_floor {
-		*e.target_floor = -1
-	}
+// 	if *e.target_floor == *e.at_floor {
+// 		*e.target_floor = -1
+// 	}
 
-	// // Remove all orders on floor
-	// e.internal_button_array[*e.at_floor] = false
-	// e.up_button_array[*e.at_floor] = false
-	// e.down_button_array[*e.at_floor] = false
+// 	// // Remove all orders on floor
+// 	// e.internal_button_array[*e.at_floor] = false
+// 	// e.up_button_array[*e.at_floor] = false
+// 	// e.down_button_array[*e.at_floor] = false
 
-	// Reset all lights
-	// elevio.SetButtonLamp(0, *e.at_floor, false)
-	// elevio.SetButtonLamp(1, *e.at_floor, false)
-	// elevio.SetButtonLamp(2, *e.at_floor, false)
-	// }
+// 	// Reset all lights
+// 	// elevio.SetButtonLamp(0, *e.at_floor, false)
+// 	// elevio.SetButtonLamp(1, *e.at_floor, false)
+// 	// elevio.SetButtonLamp(2, *e.at_floor, false)
+// 	// }
 
-}
+// }
 
 func (e *Elevator) PickTarget() {
 	self := e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID]
@@ -303,13 +305,11 @@ func (e Elevator) Visit_floor() {
 	}
 
 	if *e.at_floor == *e.target_floor {
-		// Reset internal button
-		//elevio.SetButtonLamp(2, *e.at_floor, false)
-		fmt.Printf("Lamp internal set \n")
 
 		// Reset target
 		*e.target_floor = -1
 		*e.moving_direction = structs.STILL
+		fmt.Printf("At DOOR_OPEN\n")
 		*e.internal_state = structs.DOOR_OPEN
 
 		// // Make sure the correct orders are removed
@@ -420,7 +420,7 @@ func (e Elevator) AddCabOrderToMaster(floor int) {
 
 		// Send data to master if master is alive
 		if e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.CURRENT_DATA.MASTER_ID].ALIVE {
-		e._message_data_to_master(encoded_data, structs.NEWCABCALL)
+			e._message_data_to_master(encoded_data, structs.NEWCABCALL)
 		}
 	}
 
