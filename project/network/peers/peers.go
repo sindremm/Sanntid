@@ -7,6 +7,12 @@ import (
 	"sort"
 	"time"
 )
+type Peer struct {
+	Id       string
+	Ip       string
+	TcpPort  int
+	lastSeen time.Time
+}
 
 type PeerUpdate struct {
 	Peers []string

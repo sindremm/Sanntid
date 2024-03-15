@@ -17,6 +17,8 @@ import (
 	"elevator/network/bcast"
 	"elevator/network/localip"
 	"elevator/network/peers"
+	election "elevator/network/new-election"
+	elev_structs "elevator/structs"
 )
 
 type MasterSlave struct {
@@ -67,9 +69,12 @@ func (ms *MasterSlave) MainLoop() {
 	peers_port := 33224
 	broadcast_port := 32244
 	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
+	peers_update_channel := make(chan peers.PeerUpdate)
+	isMaster := make(chan bool, 1)
+	var peerDataMap = make(map[string]elev_structs.SystemData)
 	Heartbeat(input_id, peers_port, broadcast_port)
 
-	go CheckHeartbeat(ms, peers_port, broadcast_port)
+	go CheckHeartbeat(ms, peers_port, broadcast_port, peers_update_channel)
 
 	// Check if this elevator is Master
 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
@@ -97,6 +102,19 @@ func (ms *MasterSlave) MainLoop() {
 		loop:
 			for {
 				select {
+				case p := <-peers_update_channel:
+					// Update the connected peers
+					connectedPeers := []elev_structs.SystemData{}
+					for _, peer := range p.Peers {
+						if data, ok := peerDataMap[peer]; ok {
+							connectedPeers = append(connectedPeers, data)
+						}
+					}
+					
+					// Call DetermineMaster with the connected peers
+					currentMasterId := election.DetermineMaster(strconv.Itoa(ms.UNIT_ID), strconv.Itoa(ms.CURRENT_DATA.MASTER_ID), connectedPeers, isMaster)
+					ms.CURRENT_DATA.MASTER_ID, _ = strconv.Atoi(currentMasterId)
+
 				case data := <-received_data_channel:
 
 					//Decodes the data recieved from slave
@@ -276,9 +294,7 @@ func Heartbeat(id string, peers_port int, broadcast_port int) {
 }
 
 // CheckHeartbeat checks if a heartbeat has been received from the leader.
-func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
-
-	peers_update_channel := make(chan peers.PeerUpdate)
+func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int, peers_update_channel chan peers.PeerUpdate) {
 
 	//Receives peer update
 	go peers.Receiver(peers_port, peers_update_channel)

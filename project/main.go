@@ -10,6 +10,7 @@ import (
 	// "strings"
 	master "elevator/master-slave"
 	singleelev "elevator/single-elevator"
+	//election_handler "elevator/network/new-election"
 	"elevator/structs"
 	"flag"
 	"strconv"
@@ -51,6 +52,7 @@ func main() {
 	// Create master slave
 	master_slave := master.MakeMasterSlave(received_id, ":"+port)
 	elevator := singleelev.MakeElevator(received_id, master_slave)
+
 
 	// Start reading elevator channels
 	go elevator.ReadChannels(drv_buttons, drv_floors, drv_obstr, drv_stop)
