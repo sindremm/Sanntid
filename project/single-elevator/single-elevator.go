@@ -412,8 +412,10 @@ func (e Elevator) AddCabOrderToMaster(floor int) {
 		}
 		encoded_data, _ := json.Marshal(&data)
 
-		// Send data to master
+		// Send data to master if master is alive
+		if e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.CURRENT_DATA.MASTER_ID].ALIVE {
 		e._message_data_to_master(encoded_data, structs.NEWCABCALL)
+		}
 	}
 
 	e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[unit_id].INTERNAL_BUTTON_ARRAY[floor] = true

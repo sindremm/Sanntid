@@ -100,6 +100,7 @@ func (ms *MasterSlave) MainLoop() {
 				case data := <-received_data_channel:
 
 					//Decodes the data recieved from slave
+					fmt.Printf("fkjsfkvgwbjlka\n")
 					decoded_data := tcp_interface.DecodeMessage(data)
 					id := decoded_data.Sender_id
 					updateElevatorLights(ms)

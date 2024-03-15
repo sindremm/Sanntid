@@ -8,83 +8,6 @@ import (
 	"elevator/structs"
 	"encoding/json"
 )
-// func main() {
-
-// 	//Gets local IP
-// 	localIP, err := localip.LocalIP()
-// 	if err != nil {
-// 		fmt.Printf("Local IP error: %v \n", err)
-// 	}
-// 	fmt.Printf("\nIP:", localIP)
-
-// 	//The id that gets broadcasted to peers
-// 	var id string
-// 	flag.StringVar(&id, "id", "", "id of this peer")
-// 	flag.Parse()
-
-// 	//Ports for checking for life
-// 	broadcast_port := 33344
-// 	peers_port := 33224
-
-// 	fmt.Printf("\n %v %v \n", peers_port, broadcast_port)
-
-// 	//tempMessage := structs.TestTCPMsg{"Hello", 544}
-
-// 	// updateLife(id, peers_port, broadcast_port)
-// 	// checkForLife(id, peers_port, broadcast_port)
-// 	//communicate(localIP, tempMessage)
-// }
-
-//TODO: Delete when AJ is done refactoring
-/*
-// Gets information on life status on the peers of the local network
-func checkForLife(id string, peers_port int, broadcast_port int) {
-
-	peers_update_channel := make(chan peers.PeerUpdate)
-
-	go peers.Receiver(peers_port, peers_update_channel)
-
-	aliveCheck := make(chan structs.AliveMsg)
-
-	go bcast.Receiver(broadcast_port, aliveCheck)
-
-	//Prints peer update
-	for {
-		select {
-		case p := <-peers_update_channel:
-			fmt.Printf("Peer update:\n")
-			fmt.Printf("  Peers:    %q\n", p.Peers)
-			fmt.Printf("  New:      %q\n", p.New)
-			fmt.Printf("  Lost:     %q\n", p.Lost)
-		case a := <-aliveCheck:
-			fmt.Printf("Received %#v \n", a)
-		}
-	}
-}
-
-
-// Sends message on life status on local network
-func updateLife(id string, peers_port int, broadcast_port int) {
-	peer_bool := make(chan bool)
-	go peers.Transmitter(peers_port, id, peer_bool)
-
-	aliveUpdateMsg := make(chan structs.AliveMsg)
-
-	go bcast.Transmitter(broadcast_port, aliveUpdateMsg)
-
-	//Uncomment if we want updates every second
-
-	// go func() {
-	// 	helloMsg := AliveMsg{"Alive from ", id, 0}
-	// 	for {
-	// 		helloMsg.Iter++
-	// 		aliveUpdateMsg <- helloMsg
-	// 		time.Sleep(1 * time.Second)
-	// 	}
-	// }()
-
-}
-*/
 
 // Encodes systemData struct to []byte to be sent by TCP
 func EncodeMessage(s *structs.TCPMsg) ([]byte) {
@@ -141,7 +64,6 @@ func SendData(client_address string, message []byte) {
 	// Dial client to establish connection
 	conn, err := net.DialTimeout("tcp", client_address, structs.TCP_timeout)
 	if err != nil {
-		//TODO: Use peers to check if alive, and remove if gone
 		fmt.Printf("Some error 1 %v\n", err)
 		return
 	}
@@ -188,12 +110,4 @@ func ReceiveData(listen_address string, reading chan []byte) {
 			reading <- buffer[:n]
 		}
 	}
-}
-
-// The slave sends it's info to the master unit
-func SlaveSendInfoToMaster(master_address string, slave_message *structs.SystemData) {
-	//Encode systemdata and add zero termination
-
-	// SendData(master_address, slave_message)
-
 }
