@@ -287,6 +287,17 @@ func (e *Elevator) PickTarget() {
 	// fmt.Printf("Picking target new target: %d \n", new_target)
 	*e.target_floor = new_target
 
+	for i := 0; i < structs.N_FLOORS; i++ {
+		if e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[i] == false {
+			elevio.SetButtonLamp(0, i, false)
+		}
+		if e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[i] == false {
+			elevio.SetButtonLamp(1, i, false)
+		}
+		if e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID].INTERNAL_BUTTON_ARRAY[i] == false {
+			elevio.SetButtonLamp(2, i, false)
+		}
+	}
 	// Update value of master
 }
 
@@ -336,18 +347,6 @@ func (e Elevator) Visit_floor() {
 	fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
 	//e._debug_print_internal_states()
 	//e._debug_print_master_data()
-
-	for i := 0; i < structs.N_FLOORS; i++ {
-		if e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[i] == false {
-			elevio.SetButtonLamp(0, i, false)
-		}
-		if e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[i] == false {
-			elevio.SetButtonLamp(1, i, false)
-		}
-		if e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID].INTERNAL_BUTTON_ARRAY[i] == false {
-			elevio.SetButtonLamp(2, i, false)
-		}
-	}
 
 }
 
