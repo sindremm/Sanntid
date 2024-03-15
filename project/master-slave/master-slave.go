@@ -17,6 +17,8 @@ import (
 	"elevator/network/bcast"
 	"elevator/network/localip"
 	"elevator/network/peers"
+	election "elevator/network/new-election"
+	elev_structs "elevator/structs"
 )
 
 type MasterSlave struct {
@@ -67,9 +69,12 @@ func (ms *MasterSlave) MainLoop() {
 	peers_port := 33224
 	broadcast_port := 32244
 	input_id := strconv.Itoa(ms.UNIT_ID) + "-" + ms.IP_ADDRESS + ms.LISTEN_PORT
+	peers_update_channel := make(chan peers.PeerUpdate)
+	isMaster := make(chan bool, 1)
+	var peerDataMap = make(map[string]elev_structs.SystemData)
 	Heartbeat(input_id, peers_port, broadcast_port)
 
-	go CheckHeartbeat(ms, peers_port, broadcast_port)
+	go CheckHeartbeat(ms, peers_port, broadcast_port, peers_update_channel)
 
 	// Check if this elevator is Master
 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
@@ -97,6 +102,19 @@ func (ms *MasterSlave) MainLoop() {
 		loop:
 			for {
 				select {
+				case p := <-peers_update_channel:
+					// Update the connected peers
+					connectedPeers := []elev_structs.SystemData{}
+					for _, peer := range p.Peers {
+						if data, ok := peerDataMap[peer]; ok {
+							connectedPeers = append(connectedPeers, data)
+						}
+					}
+					
+					// Call DetermineMaster with the connected peers
+					currentMasterId := election.DetermineMaster(strconv.Itoa(ms.UNIT_ID), strconv.Itoa(ms.CURRENT_DATA.MASTER_ID), connectedPeers, isMaster)
+					ms.CURRENT_DATA.MASTER_ID, _ = strconv.Atoi(currentMasterId)
+
 				case data := <-received_data_channel:
 
 					//Decodes the data recieved from slave
@@ -228,168 +246,7 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 	}
 }
 
-// // HandleOrderFromMaster is a method on the MasterSlave struct that processes an order from the master.
-// func (ms *MasterSlave) HandleOrderFromMaster(order *structs.ElevatorState) error {
-// 	// Check if the target floor in the order is valid (between 0 and 3)
-// 	if order.TARGET_FLOOR < 0 || order.TARGET_FLOOR > structs.N_FLOORS {
-// 		return fmt.Errorf("Invalid order: floor must be between 0 and 3")
-// 	}
-// 	// Check if the direction in the order is valid (0 for stop, 1 for up, 2 for down)
-// 	if order.DIRECTION < 0 || order.DIRECTION > 2 {
-// 		return fmt.Errorf("Invalid order: direction must be 0, 1 or 2")
-// 	}
-
-// 	// Update the SystemData based on the order
-// 	// If the direction is 1 (up), set the corresponding floor in the up button array to true
-// 	if order.DIRECTION == 1 {
-// 		ms.CURRENT_DATA.UP_BUTTON_ARRAY[order.TARGET_FLOOR] = true
-// 	// If the direction is 2 (down), set the corresponding floor in the down button array to true
-// 	} else if order.DIRECTION == 2 {
-// 		ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[order.TARGET_FLOOR] = true
-// 	// If the direction is 0 (stop), do nothing
-// 	} else {
-// 		// TODO: Set internal orders for given elevator
-// 		// ms.current_data.INTERNAL_BUTTON_ARRAY[order.TARGET_FLOOR] = true
-// 	}
-// 	// Print a message indicating that the order has been processed
-// 	fmt.Printf("Order for floor %d with direction %d has been processed.\n", order.TARGET_FLOOR, order.DIRECTION)
-// 	return nil
-// }
-
-// // Create a MasterSlave
-// func MakeMasterSlave(UnitID int, port string, elevator single.Elevator) *MasterSlave {
-// 	MS := new(MasterSlave)
-	
-// 	// Initialize current data
-// 	SD := structs.SystemData{
-//         MASTER_ID: 0,
-//         UP_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
-//         DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{}),
-//         ELEVATOR_DATA: &([structs.N_ELEVATORS]structs.ElevatorData{}),
-//         COUNTER: 0,
-//     }
-
-// 	// Set data
-// 	MS.CURRENT_DATA = &SD
-	
-// 	// Set identifying ID of unit
-// 	MS.UNIT_ID = UnitID
-	
-// 	// Set corresponding elevator
-// 	MS.ELEVATOR_UNIT = elevator
-
-// 	// Set the port where tcp messages are received
-// 	MS.LISTEN_PORT = port
-
-// 	// Start threads
-// 	go elevator.Main()
-
-// 	return MS
-// }
-
 var fullAddress = structs.SERVER_IP_ADDRESS + ":" + structs.PORT
-
-// func (ms *MasterSlave) MainLoop() {
-// 	// Check if this elevator is Master
-// 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
-
-// 	filename := "/home/student/Documents/AjananMiaSindre/Sanntid/exercise_4/main.go"
-
-// 			// TODO: Update SystemData:
-// 			// Update calls, buttons
-// 			// Update the states of each elevator
-// 			// UpdateElevatorTargets() (Only run when new calls, or update in state of elevator)
-// 			// Increase counter
-
-
-// 			// Send updated SystemData
-// 			ms.BroadcastSystemData()
-			
-		
-		
-// 		} else {
-// 			// Run if current elevator is slave
-
-// 			// Receive data from master
-// 			own_address := ms.IP_ADDRESS + ms.LISTEN_PORT 
-// 			received_data := new(structs.SystemData)
-// 			tcp_interface.ReceiveSystemData(own_address, received_data)
-
-// 			// Check if the received data is newer then current data, and update current data if so 
-// 			if received_data.COUNTER > ms.CURRENT_DATA.COUNTER {
-// 				ms.CURRENT_DATA = received_data
-// 			}
-
-// 			calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
-// 			ms.ELEVATOR_UNIT.PickTarget(calls)
-			
-// 		}
-// 	}
-
-// }
-
-// func (ms *MasterSlave) BroadcastSystemData() {
-// 	// Send system data to each elevator
-// 	for i := 0; i < structs.N_ELEVATORS; i++ {
-// 		// Find corresponding address of elevator client
-// 		client_address := ms.CURRENT_DATA.ELEVATOR_DATA[i].ADDRESS
-// 		// Send system data to client
-// 		tcp_interface.SendSystemData(client_address, ms.CURRENT_DATA)
-// 	}
-	
-// }
-
-// // Read from the channels and put data into variables
-// func (ms *MasterSlave) ReadButtons(button_order chan elevio.ButtonEvent) {
-
-// 	for {
-// 		select {
-// 		case bo := <-button_order:
-// 			// Transform order to readable format
-// 			floor, btn := ms.InterpretOrder(bo)
-// 			// Add order to internal array and set lights
-// 			ms.AddOrderToSystemDAta(floor, btn)
-// 			elevio.SetButtonLamp(btn, floor, true)
-// 		}
-// 	}
-// }
-
-// // sendSystemData is a function that sends SystemData over a TCP connection.
-// // It takes a net.Conn object representing the connection and a pointer to the SystemData object to be sent.
-// // It returns an error if any occurs during the process.
-// func sendSystemData(conn net.Conn, data *structs.SystemData) error {
-// 	// Create a new encoder that will write to conn
-// 	encoder := gob.NewEncoder(conn)
-// 	// Encode the SystemData object and send it over the connection
-// 	// If an error occurs during encoding, wrap it in a new error indicating that encoding failed
-// 	if err := encoder.Encode(data); err != nil {
-// 		return fmt.Errorf("failed to encode SystemData: %v", err)
-// 	}
-// }
-
-
-// func (ms *MasterSlave) UpdateElevatorTargets() {
-// 	// Get new elevator targets
-// 	movement_map := *scheduler.CalculateElevatorMovement(*(ms.CURRENT_DATA))
-
-// 	// Map to convert from map of elevators to array of elevators
-// 	key_to_int_map := map[string]int{
-// 		"one": 1,
-// 	 	"two": 2, 
-// 		"three": 3,
-// 	}
-	
-// 	// Update values in ELEVATOR_TARGETS of SystemData
-// 	for k := range movement_map {
-// 		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]].ELEVATOR_TARGETS = movement_map[k];
-// 	}
-// }
-
-// //TODO: Implement function to check if the new targets differ from the current ones
-// func (ms *MasterSlave) CheckIfReceivedNewTargets() {
-// 	ms.CURRENT_DATA.COUNTER
-// }
-
 // Heartbeat sends a heartbeat message to all other elevators.
 func Heartbeat(id string, peers_port int, broadcast_port int) {
 
@@ -402,9 +259,7 @@ func Heartbeat(id string, peers_port int, broadcast_port int) {
 }
 
 // CheckHeartbeat checks if a heartbeat has been received from the leader.
-func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
-
-	peers_update_channel := make(chan peers.PeerUpdate)
+func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int, peers_update_channel chan peers.PeerUpdate) {
 
 	//Receives peer update
 	go peers.Receiver(peers_port, peers_update_channel)
@@ -441,7 +296,7 @@ func UpdateElevatorMap(ms *MasterSlave, newElevatorID string) {
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = true
 }
 
-// Chenges alive status when a peer disconnects
+// Changes alive status when a peer disconnects
 func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 	for i := range lostElevatorID {
 		elevatorNum, _ := splitPeerString(lostElevatorID[i])
