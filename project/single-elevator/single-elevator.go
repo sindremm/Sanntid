@@ -293,18 +293,8 @@ func (e *Elevator) PickTarget() {
 	// fmt.Printf("Picking target new target: %d \n", new_target)
 	*e.target_floor = new_target
 
-	for i := 0; i < structs.N_FLOORS; i++ {
-		if !e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[i] {
-			elevio.SetButtonLamp(0, i, false)
-		}
-		if !e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[i] {
-			elevio.SetButtonLamp(1, i, false)
-		}
-		if !e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID].INTERNAL_BUTTON_ARRAY[i] {
-			elevio.SetButtonLamp(2, i, false)
-		}
-	}
 	// Update value of master
+	e.AddElevatorDataToMaster()
 }
 
 func (e Elevator) Visit_floor() {
@@ -318,9 +308,6 @@ func (e Elevator) Visit_floor() {
 	}
 
 	if *e.at_floor == *e.target_floor {
-		// Reset internal button
-		elevio.SetButtonLamp(2, *e.at_floor, false)
-		fmt.Printf("Lamp internal set \n")
 
 		// Reset target
 		*e.target_floor = -1

@@ -74,12 +74,13 @@ func (ms *MasterSlave) MainLoop() {
 	// Check if this elevator is Master
 	is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 
-	// Start listening to received data
-	received_data_channel := make(chan []byte)
 	own_address := ms.IP_ADDRESS + ms.LISTEN_PORT
 
+	// Start listening to received data
+	received_messages_channel := make(chan []byte)
+	
 	// Start reading received data
-	go tcp_interface.ReceiveData(own_address, received_data_channel)
+	go tcp_interface.ReceiveData(own_address, received_messages_channel)
 
 	// Main loop of Master-slave
 	for {
@@ -91,13 +92,18 @@ func (ms *MasterSlave) MainLoop() {
 			// Run if current elevator is master
 
 			// TODO: Update SystemData:
-
-			// Get all data from channel and insert into SystemData
+		
+		received_data := false
 
 		loop:
 			for {
 				select {
-				case data := <-received_data_channel:
+				case data := <-received_messages_channel:
+
+					// Notify that an update has occured
+
+					received_data = true
+					fmt.Printf("Test_loop")
 
 					//Decodes the data recieved from slave
 					decoded_data := tcp_interface.DecodeMessage(data)
@@ -162,19 +168,25 @@ func (ms *MasterSlave) MainLoop() {
 			// Update the states of each elevator
 
 			// Increase counter
-			ms.CURRENT_DATA.COUNTER += 1
+			if received_data {
+				ms.CURRENT_DATA.COUNTER += 1
+				fmt.Printf("Test1")
 
-			// UpdateElevatorTargets() (Only run when new calls, or update in state of elevator)
-			ms.UpdateElevatorTargets()
+				// Only run when new calls, or update in state of elevator
+				ms.UpdateElevatorTargets()
+				fmt.Printf("Test2")
 
-			// Send updated SystemData
-			ms.BroadcastSystemData()
+				// Send updated SystemData
+				ms.BroadcastSystemData()
+				fmt.Printf("Test3")
+			}
+			
 
 		} else {
 			// Run if current elevator is slave
 
 			// Receive data from master
-			received_data := <-received_data_channel
+			received_data := <-received_messages_channel
 			decoded_data := tcp_interface.DecodeMessage(received_data)
 			decoded_systemData := tcp_interface.DecodeSystemData(decoded_data.Data)
 
