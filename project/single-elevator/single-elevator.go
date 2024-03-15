@@ -90,7 +90,6 @@ func (e Elevator) ElevatorLoop() {
 		if *e.is_stopped {
 			// fmt.Print("Stop\n")
 			*e.internal_state = structs.STOPPED
-			fmt.Printf("Update 10\n")
 			e.AddElevatorDataToMaster()
 		}
 
@@ -127,7 +126,7 @@ func (e Elevator) ElevatorLoop() {
 				*e.at_floor = *e.floor_sensor
 
 				// Update value of master
-				fmt.Printf("Update 2\n")
+
 				e.AddElevatorDataToMaster()
 
 				elevio.SetFloorIndicator(*e.at_floor)
@@ -194,13 +193,13 @@ func (e *Elevator) AddOrderToSystemDAta(floor int, button elevio.ButtonType) {
 		elevio.SetButtonLamp(elevio.BT_HallUp, floor, true)
 	case 1:
 		// fmt.Printf("Adding down order to floor %d\n", floor)
-		fmt.Printf("Update 3\n")
+
 		e.AddHallOrderToMaster(floor, button)
 		e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = true
 		elevio.SetButtonLamp(elevio.BT_HallDown, floor, true)
 	case 2:
 		// fmt.Printf("Adding cab order to floor %d\n", floor)
-		fmt.Printf("Update 4\n")
+
 		e.AddCabOrderToMaster(floor)
 		e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID].INTERNAL_BUTTON_ARRAY[floor] = true
 		elevio.SetButtonLamp(elevio.BT_Cab, floor, true)
@@ -284,7 +283,6 @@ func (e *Elevator) PickTarget() {
 		*e.target_floor = new_target
 
 		// Update value of master
-		fmt.Printf("Update 1\n")
 		
 		e.MoveToTarget()
 		e.AddElevatorDataToMaster()
@@ -298,7 +296,6 @@ func (e Elevator) Visit_floor() {
 	if *e.target_floor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Stop)
 		*e.internal_state = structs.IDLE
-		fmt.Printf("Update 5\n")
 		e.AddElevatorDataToMaster()
 		return
 	}
@@ -323,9 +320,9 @@ func (e Elevator) Visit_floor() {
 		// Get allocated orders at floor
 		target := unit.ELEVATOR_TARGETS[*e.at_floor]
 
-		fmt.Printf("Update 7\n")
+
 		e.ClearOrderFromMaster(*e.at_floor, target)
-		fmt.Printf("Update 6\n")
+
 		e.AddElevatorDataToMaster()
 
 		// Transition to OpenDoor state
@@ -367,7 +364,7 @@ func (e Elevator) OpenDoor() {
 			*e.target_floor = -1
 		}
 
-		fmt.Printf("Update 8\n")
+
 		e.AddElevatorDataToMaster()
 	}
 

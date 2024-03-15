@@ -100,6 +100,7 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 		is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 		has_updated := false
 		if is_master {
+			fmt.Printf("Master: %v", ms.CURRENT_DATA.MASTER_ID)
 			// Run if current elevator is master
 			// TODO: Update SystemData:
 		master_loop:
@@ -143,6 +144,7 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 						decoded_systemData := tcp_interface.DecodeSystemData(slave_data.Data)
 						// fmt.Printf("Received Decoded data:\n")
 						// fmt.Printf("%s", structs.SystemData_to_string(*decoded_systemData))
+
 
 						//Insert data into SystemData
 						// ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
@@ -210,6 +212,9 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 				// // Receive data from master
 				// decoded_data := tcp_interface.DecodeMessage(master_data)
 				decoded_systemData := tcp_interface.DecodeSystemData(master_data.Data)
+				if decoded_systemData.MASTER_ID != ms.CURRENT_DATA.MASTER_ID {
+					ms.CURRENT_DATA.MASTER_ID = decoded_systemData.MASTER_ID
+				}
 
 				// Find type of message
 				master_data_type := master_data.MessageType
@@ -221,9 +226,6 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 					// Check if the received data is newer then current data, and update current data if so
 					if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
 						ms.CURRENT_DATA = decoded_systemData
-					}
-					if decoded_systemData.MASTER_ID != ms.CURRENT_DATA.MASTER_ID {
-						ms.CURRENT_DATA.MASTER_ID = decoded_systemData.MASTER_ID
 					}
 
 					UpdateElevatorLights(ms)
