@@ -18,6 +18,7 @@ func EncodeMessage(s *structs.TCPMsg) []byte {
 	return b
 }
 
+//Encodes system data into []byte
 func EncodeSystemData(s *structs.SystemData) []byte {
 	b, err := json.Marshal(s)
 	if err != nil {
@@ -48,6 +49,7 @@ func DecodeSystemData(data []byte) *structs.SystemData {
 	return received_message
 }
 
+//Decodes []byte with hall order into HallorderMsg struct
 func DecodeHallOrderMsg(data []byte) *structs.HallorderMsg {
 	var received_message *structs.HallorderMsg
 
@@ -67,8 +69,6 @@ func SendData(client_address string, message []byte) {
 		fmt.Printf("Some error 1 %v\n", err)
 		return
 	}
-	//TODO: ADD somwhere in the code
-	// defer conn.Close()
 
 	// Send data
 	_, err = conn.Write(message)

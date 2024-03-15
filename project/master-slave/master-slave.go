@@ -100,7 +100,7 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 		is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 		has_updated := false
 		if is_master {
-			fmt.Printf("Master: %v", ms.CURRENT_DATA.MASTER_ID)
+			//fmt.Printf("Master: %v", ms.CURRENT_DATA.MASTER_ID)
 			// Run if current elevator is master
 			// TODO: Update SystemData:
 		master_loop:
@@ -294,7 +294,7 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 }
 
 func UpdateElevatorLights(ms *MasterSlave) {
-	//fmt.Printf("Lamp set\n")
+
 	for i := 0; i < structs.N_FLOORS; i++ {
 		if !ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] {
 			elevio.SetButtonLamp(0, i, false)
@@ -315,13 +315,14 @@ func UpdateElevatorLights(ms *MasterSlave) {
 			elevio.SetButtonLamp(2, i, true)
 		}
 	}
-	// time.Sleep(500 * time.Millisecond)
 }
 
 // Heartbeat sends a heartbeat message to all other elevators.
 func Heartbeat(id string, peers_port int, broadcast_port int) {
 
 	peer_bool := make(chan bool)
+
+	//Transmits peer update
 	go peers.Transmitter(peers_port, id, peer_bool)
 
 	aliveUpdateMsg := make(chan structs.AliveMsg)
@@ -331,7 +332,9 @@ func Heartbeat(id string, peers_port int, broadcast_port int) {
 
 // CheckHeartbeat checks if a heartbeat has been received from the leader.
 func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
+
 	peers_update_channel := make(chan peers.PeerUpdate)
+
 	//Receives peer update
 	go peers.Receiver(peers_port, peers_update_channel)
 
@@ -366,6 +369,7 @@ func UpdateNewConnection(ms *MasterSlave, newElevatorID string) {
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = true
 
+	//Updates master id if necessary
 	newMasterChoice(ms)
 }
 
@@ -375,27 +379,13 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 		elevatorNum, _ := splitPeerString(lostElevatorID[i])
 		ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = false
 	}
+
+	//Updates master id if necessary
 	newMasterChoice(ms)
 }
 
-//var peerDataMap = make(map[string]elev_structs.SystemData)
-// connectedPeers := []elev_structs.SystemData{}
-// p := <-peers_update_channel
-// fmt.Printf("Peers channel1: %v \n", p)
 
-// for i := 0; i < structs.N_ELEVATORS; i++ {
-// 	if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
-// 		connectedPeers = append(connectedPeers, ms.CURRENT_DATA)
-// 	}
-// }
-// for data, _:= range p.Peers {
-// 	elevatorNum, _ := splitPeerString(data)
-// 		connectedPeers = append(connectedPeers, ms.CURRENT_DATA)
-// }
-// fmt.Printf("Peers channel2: %v \n", connectedPeers)
-// currentMasterId := election.DetermineMaster(strconv.Itoa(ms.UNIT_ID), strconv.Itoa(ms.CURRENT_DATA.MASTER_ID), connectedPeers, isMaster)
-// ms.CURRENT_DATA.MASTER_ID, _ = strconv.Atoi(currentMasterId)
-
+//Chooses a new master if the current one is dead
 func newMasterChoice(ms *MasterSlave) {
 	if !ms.CURRENT_DATA.ELEVATOR_DATA[ms.CURRENT_DATA.MASTER_ID].ALIVE {
 		for i := 0; i < structs.N_ELEVATORS; i++ {
@@ -403,9 +393,7 @@ func newMasterChoice(ms *MasterSlave) {
 				ms.CURRENT_DATA.MASTER_ID = i
 				fmt.Printf("New master: %v\n", ms.CURRENT_DATA.MASTER_ID)
 
-				//ms.MainLoop()
 				break
-				//is_master := ms.CURRENT_DATA.MASTER_ID == ms.UNIT_ID
 			}
 		}
 	}
@@ -419,5 +407,7 @@ func splitPeerString(peerString string) (elevatorNum int, elevatoraddress string
 		fmt.Printf("Error with string splitting: %v \n", err)
 	}
 	elevatorAddress := splitString[1]
+
+	//Returns the Id and the address of the elevator
 	return elevatorNum, elevatorAddress
 }
