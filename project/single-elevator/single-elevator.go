@@ -128,8 +128,6 @@ func (e Elevator) ElevatorLoop() {
 				continue
 			}
 
-			
-
 		case structs.DOOR_OPEN:
 			e.OpenDoor()
 
@@ -230,7 +228,7 @@ func (e *Elevator) PickTarget() {
 	targets := self.ELEVATOR_TARGETS
 	up_calls := [structs.N_FLOORS]bool{false, false, false, false}
 	down_calls := [structs.N_FLOORS]bool{false, false, false, false}
-	
+
 	for i := 0; i < structs.N_FLOORS; i++ {
 		up_calls[i] = targets[i][0]
 		down_calls[i] = targets[i][1]
@@ -273,7 +271,7 @@ func (e *Elevator) PickTarget() {
 			// Check floors below
 			check_floor := *e.at_floor - i
 
-			if check_floor < 0 || check_floor > 4 || *e.moving_direction == structs.UP{
+			if check_floor < 0 || check_floor > 4 || *e.moving_direction == structs.UP {
 				continue
 			}
 
@@ -304,6 +302,7 @@ func (e Elevator) Visit_floor() {
 	if *e.at_floor == *e.target_floor {
 		// Reset internal button
 		elevio.SetButtonLamp(2, *e.at_floor, false)
+		fmt.Printf("Lamp internal set \n")
 
 		// Reset target
 		*e.target_floor = -1
@@ -333,12 +332,23 @@ func (e Elevator) Visit_floor() {
 		elevio.SetButtonLamp(1, *e.at_floor, false)
 		elevio.SetButtonLamp(2, *e.at_floor, false)
 
-
-
 	}
 	fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
-	e._debug_print_internal_states()
-	e._debug_print_master_data()
+	//e._debug_print_internal_states()
+	//e._debug_print_master_data()
+
+	for i := 0; i < structs.N_FLOORS; i++ {
+		if e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[i] == false {
+			elevio.SetButtonLamp(0, i, false)
+		}
+		if e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[i] == false {
+			elevio.SetButtonLamp(1, i, false)
+		}
+		if e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID].INTERNAL_BUTTON_ARRAY[i] == false {
+			elevio.SetButtonLamp(2, i, false)
+		}
+	}
+
 }
 
 func (e Elevator) TransitionToOpenDoor() {
@@ -370,7 +380,7 @@ func (e Elevator) OpenDoor() {
 
 func (e Elevator) MoveToTarget() {
 	// Set state to MOVING and set motor direction
-	fmt.Printf("Moving to target\n")
+	//fmt.Printf("Moving to target\n")
 	*e.internal_state = structs.MOVING
 
 	if *e.target_floor > *e.at_floor {
