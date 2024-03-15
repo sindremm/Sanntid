@@ -80,7 +80,7 @@ func SendData(client_address string, message []byte) {
 }
 
 // Listens and accepts connection on our_port, then sends a message back
-func ReceiveSlaveData(listen_address string, message_channel chan structs.TCPMsg) {
+func ReceiveData(listen_address string, slave_message_channel chan structs.TCPMsg, master_message_channel chan structs.TCPMsg) {
 
 	// Listen for connection on specified port
 	l, err := net.Listen("tcp", listen_address)
@@ -115,58 +115,15 @@ func ReceiveSlaveData(listen_address string, message_channel chan structs.TCPMsg
 
 			// fmt.Printf("Recieved message in reader. Type: %d\n", decoded_message.MessageType)
 			switch message_type {
-			case structs.MASTERMSG:
-
-			default:
+			case structs.NEWCABCALL, structs.NEWHALLORDER, structs.UPDATEELEVATOR, structs.CLEARHALLORDER:
 				fmt.Printf("Gotten slave data message\n")
-				message_channel <- *decoded_message
-			}
-		}
-	}
-}
-
-// Listens and accepts connection on our_port, then sends a message back
-func ReceiveMasterData(listen_address string, message_channel chan structs.TCPMsg) {
-
-	// Listen for connection on specified port
-	l, err := net.Listen("tcp", listen_address)
-	if err != nil {
-		fmt.Printf("Failed to listen message %v\n", err)
-	}
-
-	// Runs for loop to wait for message
-	for {
-		fmt.Printf("Receiving data\n")
-		// Accepts message if received
-		conn, err := l.Accept()
-		//fmt.Printf("\n accept: %t", conn)
-		if err != nil {
-			fmt.Printf("Failed to accept message %v\n", err)
-		}
-
-		defer conn.Close()
-
-		buffer := make([]byte, 2048)
-
-		//buffer[:n] is message from client
-		n, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Printf("Failed to read message %v\n", err)
-		} else {
-			// Return received data
-			read_message := buffer[:n]
-
-			decoded_message := DecodeMessage(read_message)
-			message_type := decoded_message.MessageType
-
-			// fmt.Printf("Recieved message in reader. Type: %d\n", decoded_message.MessageType)
-			switch message_type {
+				slave_message_channel <- *decoded_message
 			case structs.MASTERMSG:
 				fmt.Printf("GOTTEN master data message\n")
-				message_channel <- *decoded_message
+				master_message_channel <- *decoded_message
 			default:
 			}
-
 		}
 	}
 }
+
