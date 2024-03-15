@@ -54,7 +54,6 @@ type ElevatorData struct {
 // 		elev_targets[i] = [2]bool{false, false}
 // 	}
 
-
 // 	return ElevatorData{
 // 		ALIVE: false,
 // 		ADDRESS: "",
@@ -114,10 +113,9 @@ const (
 )
 
 type HallorderMsg struct {
-	Order_floor int
+	Order_floor     int
 	Order_direction [2]bool
 }
-
 
 // Changes timeout time for Dial. 500 milliseconds = 0.5 second
 var TCP_timeout = 500 * time.Millisecond

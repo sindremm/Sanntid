@@ -102,7 +102,7 @@ func (ms *MasterSlave) MainLoop() {
 					//Decodes the data recieved from slave
 					decoded_data := tcp_interface.DecodeMessage(data)
 					id := decoded_data.Sender_id
-					updateElevatorLights(ms)
+					UpdateElevatorLights(ms)
 
 					if decoded_data.MessageType == structs.NEWCABCALL {
 						decoded_message := tcp_interface.DecodeHallOrderMsg(decoded_data.Data)
@@ -182,7 +182,7 @@ func (ms *MasterSlave) MainLoop() {
 			if decoded_systemData.COUNTER > ms.CURRENT_DATA.COUNTER {
 				ms.CURRENT_DATA = decoded_systemData
 			}
-			updateElevatorLights(ms)
+			UpdateElevatorLights(ms)
 		}
 
 		// calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
@@ -236,7 +236,8 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 	}
 }
 
-func updateElevatorLights (ms *MasterSlave) {
+func UpdateElevatorLights(ms *MasterSlave) {
+	fmt.Printf("Lamp set\n")
 	for i := 0; i < structs.N_FLOORS; i++ {
 		if !ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] {
 			elevio.SetButtonLamp(0, i, false)
@@ -247,10 +248,18 @@ func updateElevatorLights (ms *MasterSlave) {
 		if !ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].INTERNAL_BUTTON_ARRAY[i] {
 			elevio.SetButtonLamp(2, i, false)
 		}
+		if ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] {
+			elevio.SetButtonLamp(0, i, true)
+		}
+		if ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[i] {
+			elevio.SetButtonLamp(1, i, true)
+		}
+		if ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].INTERNAL_BUTTON_ARRAY[i] {
+			elevio.SetButtonLamp(2, i, true)
+		}
 	}
-	time.Sleep(500*time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 }
-
 
 // Heartbeat sends a heartbeat message to all other elevators.
 func Heartbeat(id string, peers_port int, broadcast_port int) {
@@ -284,7 +293,7 @@ func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
 			fmt.Printf("  New:      %q\n", p.New)
 			fmt.Printf("  Lost:     %q\n", p.Lost)
 			if p.New != "" {
-				UpdateElevatorMap(ms, p.New)
+				UpdateNewConnection(ms, p.New)
 			}
 			if p.Lost != nil {
 				UpdateLostConnection(ms, p.Lost)
@@ -295,15 +304,15 @@ func CheckHeartbeat(ms *MasterSlave, peers_port int, broadcast_port int) {
 	}
 }
 
-// Chenges alive status and adds address when a peer connects
-func UpdateElevatorMap(ms *MasterSlave, newElevatorID string) {
+// Changes alive status and adds address when a peer connects
+func UpdateNewConnection(ms *MasterSlave, newElevatorID string) {
 
 	elevatorNum, elevatorAddress := splitPeerString(newElevatorID)
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ADDRESS = elevatorAddress
 	ms.CURRENT_DATA.ELEVATOR_DATA[elevatorNum].ALIVE = true
 }
 
-// Chenges alive status when a peer disconnects
+// Changes alive status when a peer disconnects
 func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 	for i := range lostElevatorID {
 		elevatorNum, _ := splitPeerString(lostElevatorID[i])
