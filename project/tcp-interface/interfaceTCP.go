@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 )
 
-// Encodes systemData struct to []byte to be sent by TCP
+// Encodes TCP to be sent by []byte
 func EncodeMessage(s *structs.TCPMsg) []byte {
 	b, err := json.Marshal(s)
 	if err != nil {
@@ -18,6 +18,7 @@ func EncodeMessage(s *structs.TCPMsg) []byte {
 	return b
 }
 
+//Encodes System Data to be sent as []byte
 func EncodeSystemData(s *structs.SystemData) []byte {
 	b, err := json.Marshal(s)
 	if err != nil {
@@ -108,7 +109,6 @@ func ReceiveData(listen_address string, slave_message_channel chan structs.TCPMs
 			decoded_message := DecodeMessage(read_message)
 			message_type := decoded_message.MessageType
 
-			
 			// Send messages to channels
 			switch message_type {
 			case structs.NEWCABCALL, structs.NEWHALLORDER, structs.UPDATEELEVATOR, structs.CLEARHALLORDER:
@@ -120,4 +120,3 @@ func ReceiveData(listen_address string, slave_message_channel chan structs.TCPMs
 		}
 	}
 }
-

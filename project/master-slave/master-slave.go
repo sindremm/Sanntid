@@ -2,8 +2,6 @@ package master_slave
 
 import (
 	"fmt"
-	// "net"
-	// "os/exec"
 	"strconv"
 	"strings"
 
@@ -45,10 +43,7 @@ func MakeMasterSlave(UnitID int, port string) *MasterSlave {
 	// Set identifying ID of unit
 	MS.UNIT_ID = UnitID
 
-	// Set corresponding elevator
-	// MS.ELEVATOR_UNIT = &elevator
-
-	//IP
+	//The local IP
 
 	localIP, err := localip.LocalIP()
 	if err != nil {
@@ -140,7 +135,6 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 						decoded_systemData := tcp_interface.DecodeSystemData(slave_data.Data)
 
 						//Insert data into SystemData
-						// ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].CURRENT_FLOOR = decoded_systemData.ELEVATOR_DATA[id].CURRENT_FLOOR
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].DIRECTION = decoded_systemData.ELEVATOR_DATA[id].DIRECTION
 						ms.CURRENT_DATA.ELEVATOR_DATA[id].INTERNAL_STATE = decoded_systemData.ELEVATOR_DATA[id].INTERNAL_STATE
@@ -275,6 +269,7 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 	}
 }
 
+//Updates lights according to Current data
 func UpdateElevatorLights(ms *MasterSlave) {
 	for i := 0; i < structs.N_FLOORS; i++ {
 		if !ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] {
@@ -296,10 +291,9 @@ func UpdateElevatorLights(ms *MasterSlave) {
 			elevio.SetButtonLamp(2, i, true)
 		}
 	}
-	// time.Sleep(500 * time.Millisecond)
 }
 
-// Heartbeat sends a heartbeat message to all other elevators.
+// Heartbeat sends a heartbeat message to all other elevators to check if they are alive
 func Heartbeat(id string, peers_port int, broadcast_port int) {
 
 	peer_bool := make(chan bool)
@@ -363,6 +357,7 @@ func UpdateLostConnection(ms *MasterSlave, lostElevatorID []string) {
 }
 
 
+//Updates master_id if current master is not alive
 func newMasterChoice(ms *MasterSlave) {
 	if !ms.CURRENT_DATA.ELEVATOR_DATA[ms.CURRENT_DATA.MASTER_ID].ALIVE {
 		for i := 0; i < structs.N_ELEVATORS; i++ {

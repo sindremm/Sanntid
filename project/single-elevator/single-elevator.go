@@ -2,7 +2,6 @@ package singleelev
 
 import (
 	"encoding/json"
-	// "sync"
 	"time"
 
 	"Driver-go/elevio"
