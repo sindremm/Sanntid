@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	// "time"
 
 	"Driver-go/elevio"
 
@@ -18,7 +17,6 @@ import (
 	"elevator/network/bcast"
 	"elevator/network/localip"
 	"elevator/network/peers"
-	//election "elevator/network/new-election"
 )
 
 type MasterSlave struct {
@@ -109,7 +107,6 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 
 					// Notify that an update has occured
 					has_updated = true
-					// fmt.Printf("Received Slave Data\n")
 
 					//Decodes the data recieved from slave
 					id := slave_data.Sender_id
@@ -141,11 +138,6 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 					case structs.UPDATEELEVATOR:
 						// Decode system data
 						decoded_systemData := tcp_interface.DecodeSystemData(slave_data.Data)
-						// fmt.Printf("Received Decoded data:\n")
-						// fmt.Printf("%s", structs.SystemData_to_string(*decoded_systemData))
-						fmt.Printf("Received floor: %d\n", decoded_systemData.ELEVATOR_DATA[id].CURRENT_FLOOR)
-						fmt.Printf("Received direction: %d\n", decoded_systemData.ELEVATOR_DATA[id].DIRECTION)
-						fmt.Printf("Received INTERNAL_STATE: %d\n", decoded_systemData.ELEVATOR_DATA[id].INTERNAL_STATE)
 
 						//Insert data into SystemData
 						// ms.CURRENT_DATA.ELEVATOR_DATA[id] = decoded_systemData.ELEVATOR_DATA[id]
@@ -164,11 +156,9 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 
 						// Check and clear up and down order
 						if clear_direction[0] {
-							//fmt.Printf("Clear in up in master\n")
 							ms.CURRENT_DATA.UP_BUTTON_ARRAY[clear_floor] = false
 						}
 						if clear_direction[1] {
-							//fmt.Printf("Clear in down in master\n")
 							ms.CURRENT_DATA.DOWN_BUTTON_ARRAY[clear_floor] = false
 						}
 					default:
@@ -182,7 +172,6 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 
 			// Check if there has been an update
 			if has_updated {
-				// fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
 
 				// Increase counter of data
 				ms.CURRENT_DATA.COUNTER += 1
@@ -195,10 +184,6 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 			}
 
 		}
-		//fmt.Printf("mjau mjau\n")
-
-		// calls := ms.CURRENT_DATA.ELEVATOR_DATA[ms.UNIT_ID].ELEVATOR_TARGETS
-		// ms.ELEVATOR_UNIT.PickTarget(calls)
 	}
 }
 
@@ -208,7 +193,6 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 		for {
 			select {
 			case master_data := <-master_messages_channel:
-				// fmt.Printf("Received Master Data\n")
 
 				// // Receive data from master
 				decoded_systemData := tcp_interface.DecodeSystemData(master_data.Data)
@@ -234,8 +218,6 @@ func (ms *MasterSlave) SlaveLoop(master_messages_channel chan structs.TCPMsg) {
 				default:
 					fmt.Printf("Unrecognized master message: %d\n", master_data_type)
 				}
-
-				fmt.Printf("\n%s\n", structs.SystemData_to_string(*ms.CURRENT_DATA))
 
 			default:
 				break slave_loop
@@ -290,12 +272,10 @@ func (ms *MasterSlave) UpdateElevatorTargets() {
 	// Update values in ELEVATOR_TARGETS of SystemData
 	for k := range movement_map {
 		(*ms.CURRENT_DATA.ELEVATOR_DATA)[key_to_int_map[k]].ELEVATOR_TARGETS = movement_map[k]
-		//fmt.Printf("movement_map: %v \n", movement_map)
 	}
 }
 
 func UpdateElevatorLights(ms *MasterSlave) {
-	//fmt.Printf("Lamp set\n")
 	for i := 0; i < structs.N_FLOORS; i++ {
 		if !ms.CURRENT_DATA.UP_BUTTON_ARRAY[i] {
 			elevio.SetButtonLamp(0, i, false)

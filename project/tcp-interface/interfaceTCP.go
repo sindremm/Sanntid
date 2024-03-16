@@ -89,7 +89,6 @@ func ReceiveData(listen_address string, slave_message_channel chan structs.TCPMs
 	for {
 		// Accepts message if received
 		conn, err := l.Accept()
-		//fmt.Printf("\n accept: %t", conn)
 		if err != nil {
 			fmt.Printf("Failed to accept message %v\n", err)
 		}

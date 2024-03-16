@@ -1,9 +1,6 @@
 package singleelev
 
 import (
-	// "flag"
-	"fmt"
-	// "os"
 	"encoding/json"
 	// "sync"
 	"time"
@@ -85,22 +82,17 @@ func (e Elevator) ElevatorLoop() {
 
 		// Always check for stop-button press
 		if *e.is_stopped {
-			// fmt.Print("Stop\n")
 			*e.internal_state = structs.STOPPED
 			e.AddElevatorDataToMaster()
 		}
 
 		switch state := *e.internal_state; state {
 		case structs.IDLE:
-			// e._debug_print_internal_states()
-			// e._debug_print_master_data()
-			// fmt.Printf("Idle\n")
 
 			// Either move to existing target or choose new target
 			if *e.at_floor != -1 {
 				// Pick new target if no target, and the floor of the elevator is known
 				e.PickTarget()
-				//fmt.Printf("At pick target\n")
 				time.Sleep(10 * time.Millisecond)
 			}
 
@@ -110,7 +102,6 @@ func (e Elevator) ElevatorLoop() {
 				e.PickTarget()
 				e.MoveToTarget()
 			}
-			// fmt.Printf("State: >%v", *e.internal_state)
 
 			if (*e.at_floor != *e.floor_sensor || *e.floor_sensor == *e.target_floor) && *e.floor_sensor != -1 {
 
@@ -118,7 +109,6 @@ func (e Elevator) ElevatorLoop() {
 				*e.at_floor = *e.floor_sensor
 
 				// Update value of master
-				fmt.Printf("Update 2\n")
 				e.AddElevatorDataToMaster()
 
 				elevio.SetFloorIndicator(*e.at_floor)
@@ -203,9 +193,6 @@ func (e *Elevator) PickTarget() {
 	// Create cab calls
 	cab_calls := self.INTERNAL_BUTTON_ARRAY
 
-	// fmt.Printf("Targets: %v \n", targets)
-	// fmt.Printf("Targets (UP): %v \n ", up_calls)
-	// fmt.Printf("Targets (DOWN): %v \n ", down_calls)
 	// Sets new target to closest floor, prioritizing floors above
 
 	// Check floors above
@@ -256,14 +243,10 @@ func (e *Elevator) PickTarget() {
 		}
 	}
 
-	// fmt.Printf("Picking target new target: %d \n", new_target)
 
 	// Run if a target has been found, and it is not the same as the previous target
 	if updated && new_target != *e.target_floor {
 		*e.target_floor = new_target
-
-		// Update value of master
-		fmt.Printf("Update 1\n")
 
 		// Begin moving towards target
 		e.MoveToTarget()
@@ -279,7 +262,6 @@ func (e Elevator) Visit_floor() {
 	if *e.target_floor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Stop)
 		*e.internal_state = structs.IDLE
-		fmt.Printf("Update 5\n")
 		e.AddElevatorDataToMaster()
 		return
 	}
@@ -294,15 +276,7 @@ func (e Elevator) Visit_floor() {
 		elevio.SetMotorDirection(elevio.MD_Stop)
 		*e.internal_state = structs.DOOR_OPEN
 
-		//fmt.Printf("At DOOR_OPEN\n")
-		//*e.internal_state = structs.DOOR_OPEN
-
 		// // Make sure the correct orders are removed
-		// e.RemoveOrdersAtFloor(*e.at_floor, *e.moving_direction)
-		// Find id
-		// fmt.Printf("at_floor: %d\n", *e.at_floor)
-		// fmt.Printf("current_floor: %d\n", *e.current_floor)
-		// fmt.Printf("target_floor: %d\n", *e.target_floor)
 		id := e.ms_unit.UNIT_ID
 		// Find corresponding unit
 		unit := e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[id]
@@ -310,15 +284,10 @@ func (e Elevator) Visit_floor() {
 		target := unit.ELEVATOR_TARGETS[*e.at_floor]
 
 		// Add data to master
-		fmt.Printf("Update 7\n")
 		e.ClearOrderFromMaster(*e.at_floor, target)
-		fmt.Printf("Update 6\n")
 		e.AddElevatorDataToMaster()
 
 	}
-	// fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
-	// e._debug_print_internal_states()
-	// e._debug_print_master_data()
 
 }
 
@@ -342,7 +311,6 @@ func (e Elevator) OpenDoor() {
 
 	// Return to idle
 	*e.internal_state = structs.IDLE
-	fmt.Printf("Update 8\n")
 	e.AddElevatorDataToMaster()
 
 }
@@ -362,7 +330,6 @@ func (e Elevator) Obstruct() {
 // Sends the elevator in the right direction towards target
 func (e Elevator) MoveToTarget() {
 	// Set state to MOVING and set motor direction
-	//fmt.Printf("Moving to target\n")
 	*e.internal_state = structs.MOVING
 
 	if *e.target_floor > *e.at_floor {
@@ -396,7 +363,6 @@ func (e Elevator) Stop() {
 		// Deactivate lights
 		elevio.SetStopLamp(false)
 		elevio.SetDoorOpenLamp(false)
-		// fmt.Print(e.internal_state)
 	}
 }
 
@@ -473,28 +439,10 @@ func (e Elevator) _message_data_to_master(data []byte, msg_type structs.MessageT
 	}
 	encoded_msg := tcp_interface.EncodeMessage(&msg)
 
-	// fmt.Printf("_message_data_to_master send type: %d\n", msg_type)
-	// fmt.Printf("_message_data_to_master addres: %s\n", e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[master_id].ADDRESS)
-
 	// Send message to master
 	tcp_interface.SendData(e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[master_id].ADDRESS, encoded_msg)
 }
 
-//TODO: Remember to remove
-func (e Elevator) _debug_print_internal_states() {
-	fmt.Printf("Internal_state: %d", e.internal_state)
-	fmt.Printf("Stopped: %t \n", *e.is_stopped)
-	fmt.Printf("Obstructed: %t \n", *e.is_obstructed)
-	fmt.Printf("Floor sensor: %d\n", *e.floor_sensor)
-	fmt.Printf("At floor: %d\n", *e.at_floor)
-	fmt.Printf("Target floor: %d\n", *e.target_floor)
-	fmt.Printf("Moving direction: %d\n", *e.moving_direction)
-	fmt.Printf("---\n")
-}
-
-func (e Elevator) _debug_print_master_data() {
-	fmt.Printf("%s", structs.SystemData_to_string(*e.ms_unit.CURRENT_DATA))
-}
 
 // Reset all elevator elements
 func ResetElevator() {

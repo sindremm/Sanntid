@@ -35,12 +35,6 @@ func DetermineMaster(id string, currentMasterId string, connectedPeers []elev_st
         return peers[i].COUNTER > peers[j].COUNTER
     })
 
-	// Print the sorted list of peers
-	//fmt.Println("Sorted peers: ", peers)
-
-	// Print the id of the master node (the one with the lowest id)
-	//fmt.Printf("Elevator %s: Master is elevator %d\n", id, peers[0].ID)
-	fmt.Printf("Peers: %v\n", peers)
 	// If the current node's id is the lowest, signal that it is the master
 	if peers[0].ID == idInt {
 		isMaster <- true
@@ -55,56 +49,3 @@ func DetermineMaster(id string, currentMasterId string, connectedPeers []elev_st
 	// Return the current master's id
 	return currentMasterId
 }
-
-// //TESTKODE
-// // Insert the code under in main, if you want to test the function
-// // -------------------------------------------------------------- //
-// // Create three elevators with different IDs and COUNTERs
-// elevator1 := elev_structs.SystemData{ID: 1, COUNTER: 3}
-// elevator2 := elev_structs.SystemData{ID: 2, COUNTER: 2}
-// elevator3 := elev_structs.SystemData{ID: 3, COUNTER: 1}
-
-// // Create a slice of connected peers
-// connectedPeers := []elev_structs.SystemData{elevator1, elevator2, elevator3}
-
-// // Create a channel to signal if the current node is the master
-// isMaster := make(chan bool, 1)
-
-// // Call DetermineMaster for each elevator
-// for _, elevator := range connectedPeers {
-// 	id := strconv.Itoa(elevator.ID)
-// 	currentMasterId := masterselect.DetermineMaster(id, "", connectedPeers, isMaster)
-// 	fmt.Printf("Elevator %s: New master ID is %s\n", id, currentMasterId)
-// 	fmt.Printf("Elevator %s: Is this elevator the master? %v\n", id, <-isMaster)
-// }
-// fmt.Printf("--------------------------------------------------------------\n")
-
-// time.Sleep(5 * time.Second)
-// // Simulate an elevator dying by removing it from the connectedPeers slice
-// connectedPeers = connectedPeers[1:]
-
-// fmt.Println("After one elevator dies:")
-
-// // Re-run DetermineMaster for each remaining elevator
-// for _, elevator := range connectedPeers {
-// 	id := strconv.Itoa(elevator.ID)
-// 	currentMasterId := masterselect.DetermineMaster(id, "", connectedPeers, isMaster)
-// 	fmt.Printf("Elevator %s: New master ID is %s\n", id, currentMasterId)
-// 	fmt.Printf("Elevator %s: Is this elevator the master? %v\n", id, <-isMaster)
-// }
-// fmt.Printf("--------------------------------------------------------------\n")
-
-// time.Sleep(5 * time.Second)
-// // Simulate an elevator returning by adding it back to the connectedPeers slice
-// connectedPeers = append(connectedPeers, elevator1)
-
-// fmt.Println("After one elevator returns:")
-
-// // Re-run DetermineMaster for each elevator
-// for _, elevator := range connectedPeers {
-// 	id := strconv.Itoa(elevator.ID)
-// 	currentMasterId := masterselect.DetermineMaster(id, "", connectedPeers, isMaster)
-// 	fmt.Printf("Elevator %s: New master ID is %s\n", id, currentMasterId)
-// 	fmt.Printf("Elevator %s: Is this elevator the master? %v\n", id, <-isMaster)
-// }
-// fmt.Printf("--------------------------------------------------------------\n")

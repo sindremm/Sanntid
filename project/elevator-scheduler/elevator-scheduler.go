@@ -2,13 +2,10 @@
 package elevsched
 
 import (
-	// "Driver-go/elevio"
-	// "sync"
 	"elevator/structs"
 	"encoding/json"
-	"fmt"
 	"os/exec"
-	// "io/ioutil"
+	"fmt"
 )
 
 // Create the argument in the correct format for the cost function
@@ -51,11 +48,6 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 		new_state.Floor = state.CURRENT_FLOOR
 		new_state.Direction = direction_strings[state.DIRECTION]
 		new_state.CabRequests = (*systemData.ELEVATOR_DATA)[i].INTERNAL_BUTTON_ARRAY
-		// fmt.Printf("Elevator[%d]: {\n", i)
-		// fmt.Printf("\tBehaviour: %s\n", new_state.Behaviour)
-		// fmt.Printf("\tDirection: %v\n", new_state.Direction)
-		// fmt.Printf("\tRequest: %v\n", new_state.CabRequests)
-		// fmt.Printf("}")
 
 		// Set the values for the corresponding elevator
 		new_states[elevator_strings[i]] = new_state
