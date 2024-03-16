@@ -102,7 +102,6 @@ func (ms *MasterSlave) MasterLoop(slave_messages_channel chan structs.TCPMsg) {
 		has_updated := false
 		if is_master {
 			// Run if current elevator is master
-			// TODO: Update SystemData:
 		master_loop:
 			for {
 				select {
@@ -269,8 +268,7 @@ func (ms *MasterSlave) BroadcastSystemData() {
 			continue
 		}
 
-		//TODO: Find out if the if statement is needed:
-		//Send only data if the slave is alive
+		// Only send data to units that are alive
 		if ms.CURRENT_DATA.ELEVATOR_DATA[i].ALIVE {
 			tcp_interface.SendData(client_address, encoded_system_data)
 		}

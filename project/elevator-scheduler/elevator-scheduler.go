@@ -70,7 +70,6 @@ func assembleArgument(systemData structs.SystemData) MessageStruct {
 
 // Translate the elevators state to the corresponding string value
 func state_to_behaviour(state structs.ElevatorData) string {
-	// TODO: Find correct corresponding states
 	if state.INTERNAL_STATE == structs.IDLE {
 		return "idle"
 	}
@@ -109,7 +108,6 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][stru
 
 	if err != nil {
 		fmt.Printf("%s", err)
-		//TODO: create error output
 		return new(map[string][structs.N_FLOORS][2]bool)
 	}
 
@@ -119,7 +117,6 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][stru
 
 	if err != nil {
 		fmt.Println(err.Error())
-		//TODO: create error output
 		return new(map[string][structs.N_FLOORS][2]bool)
 	}
 
@@ -130,69 +127,3 @@ func CalculateElevatorMovement(systemData structs.SystemData) *(map[string][stru
 
 	return output
 }
-
-// // Function for testing
-// func main() {
-// 	//TODO: use a map to correspond states to elevator so it is not mixed up if some elevators are offline
-// 	states := [structs.N_ELEVATORS]structs.ElevatorData{
-// 		{
-// 			ALIVE:         true,
-// 			CURRENT_FLOOR: 2,
-// 			ELEVATOR_TARGETS: [structs.N_FLOORS][2]bool{
-// 				{false, true},
-// 				{false, false},
-// 				{false, false},
-// 				{false, false},
-// 			},
-// 			DIRECTION:             structs.UP,
-// 			INTERNAL_BUTTON_ARRAY: [structs.N_FLOORS]bool{false, false, false, true},
-// 			INTERNAL_STATE:        1,
-// 		},
-// 		{
-// 			ALIVE:         true,
-// 			CURRENT_FLOOR: 2,
-// 			ELEVATOR_TARGETS: [structs.N_FLOORS][2]bool{
-// 				{false, true},
-// 				{false, false},
-// 				{false, false},
-// 				{false, false},
-// 			},
-// 			DIRECTION:             structs.UP,
-// 			INTERNAL_BUTTON_ARRAY: [structs.N_FLOORS]bool{false, false, false, true},
-// 			INTERNAL_STATE:        1,
-// 		},
-// 		{
-// 			ALIVE:         true,
-// 			CURRENT_FLOOR: 0,
-// 			ELEVATOR_TARGETS: [structs.N_FLOORS][2]bool{
-// 				{false, false},
-// 				{false, false},
-// 				{true, false},
-// 				{false, false},
-// 			},
-// 			DIRECTION:             structs.UP,
-// 			INTERNAL_BUTTON_ARRAY: [structs.N_FLOORS]bool{false, false, false, true},
-// 			INTERNAL_STATE:        0,
-// 		},
-// 		// {
-// 		// 	ACTIVE:         true,
-// 		// 	CURRENT_FLOOR:  0,
-// 		// 	TARGET_FLOOR:   2,
-// 		// 	DIRECTION:      structs.STILL,
-// 		// 	INTERNAL_STATE: 1,
-// 		// },
-// 	}
-
-// 	data := structs.SystemData{
-// 		MASTER_ID:         0,
-// 		UP_BUTTON_ARRAY:   &([structs.N_FLOORS]bool{false, true, false, false}),
-// 		DOWN_BUTTON_ARRAY: &([structs.N_FLOORS]bool{false, false, false, true}),
-// 		ELEVATOR_DATA:     &(states),
-// 		COUNTER:           0,
-// 	}
-
-// 	return_msg := CalculateElevatorMovement(data)
-
-// 	fmt.Printf("%v", (*return_msg))
-
-// }

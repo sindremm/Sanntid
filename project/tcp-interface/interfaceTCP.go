@@ -67,15 +67,12 @@ func SendData(client_address string, message []byte) {
 		fmt.Printf("Some error 1 %v\n", err)
 		return
 	}
-	//TODO: ADD somwhere in the code
-	// defer conn.Close()
 
 	// Send data
 	_, err = conn.Write(message)
 	if err != nil {
 		fmt.Printf("Failed to send message %v\n", err)
 		return
-		//TODO: fix this err, returns infinitely many "Message: Failed to read message EOF"
 	}
 }
 

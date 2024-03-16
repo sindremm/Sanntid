@@ -15,10 +15,6 @@ import (
 	tcp_interface "elevator/tcp-interface"
 )
 
-//TODO: Remove unused code
-
-// Temporary placement of Mutex
-var order_mutex sync.Mutex
 
 type Elevator struct {
 	// The buffer values received from the elevio interface
@@ -79,18 +75,18 @@ func MakeElevator(elevatorNumber int, master *master_slave.MasterSlave) Elevator
 
 func (e Elevator) ElevatorLoop() {
 
+	// Run at start to find correct floor
 	if *e.at_floor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Up)
 		*e.internal_state = structs.MOVING
 	}
 
 	for {
-		// Check for stop-button press
 
+		// Always check for stop-button press
 		if *e.is_stopped {
 			// fmt.Print("Stop\n")
 			*e.internal_state = structs.STOPPED
-			fmt.Printf("Update 10\n")
 			e.AddElevatorDataToMaster()
 		}
 
@@ -101,19 +97,14 @@ func (e Elevator) ElevatorLoop() {
 			// fmt.Printf("Idle\n")
 
 			// Either move to existing target or choose new target
-			if *e.target_floor != -1 {
-				// Move towards target if there is one
-				e.MoveToTarget()
-				//fmt.Printf("At movetotarget\n")
-			} else if *e.at_floor != -1 {
+			if *e.at_floor != -1 {
 				// Pick new target if no target, and the floor of the elevator is known
 				e.PickTarget()
 				//fmt.Printf("At pick target\n")
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 			}
 
 		case structs.MOVING:
-
 			// Run when arriving at new floor or when starting from target floor
 			if *e.floor_sensor != -1 {
 				e.PickTarget()
@@ -147,11 +138,11 @@ func (e Elevator) ElevatorLoop() {
 			e.Obstruct()
 		}
 		// e.AddElevatorDataToMaster()
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
-// Read from the channels and put data into variables
+// Read from the channels and put data into corresponding variables
 func (e Elevator) ReadChannels(button_order chan elevio.ButtonEvent, current_floor chan int, is_obstructed chan bool, is_stopped chan bool) {
 
 	for {
@@ -159,28 +150,22 @@ func (e Elevator) ReadChannels(button_order chan elevio.ButtonEvent, current_flo
 		case bo := <-button_order:
 			// Transform order to readable format
 			floor, btn := e.InterpretOrder(bo)
-			// Add order to internal array and set lights
+			// Send buttons to master unit
 			e.AddOrderToSystemDAta(floor, btn)
-
-			// elevio.SetButtonLamp(btn, floor, true)
 
 		case cf := <-current_floor:
 			*e.floor_sensor = cf
-			// fmt.Printf("\n From channel: %t \n", cf)
 
 		case io := <-is_obstructed:
 			*e.is_obstructed = io
 
 		case is := <-is_stopped:
-			order_mutex.Lock()
 			*e.is_stopped = is
-			order_mutex.Unlock()
-			// fmt.Printf("Stopping: %t\n", *e.is_stopped)
 		}
 	}
 }
 
-// Convert order to readable format
+// Unpack button event
 func (e *Elevator) InterpretOrder(button_order elevio.ButtonEvent) (floor int, button elevio.ButtonType) {
 	order_floor := button_order.Floor
 	order_button := button_order.Button
@@ -193,22 +178,15 @@ func (e *Elevator) AddOrderToSystemDAta(floor int, button elevio.ButtonType) {
 
 	switch button {
 	case 0:
-		// fmt.Printf("Adding up order to floor %d\n", floor)
 		e.AddHallOrderToMaster(floor, button)
-		// e.ms_unit.CURRENT_DATA.UP_BUTTON_ARRAY[floor] = true
 	case 1:
-		// fmt.Printf("Adding down order to floor %d\n", floor)
-		fmt.Printf("Update 3\n")
 		e.AddHallOrderToMaster(floor, button)
-		// e.ms_unit.CURRENT_DATA.DOWN_BUTTON_ARRAY[floor] = true
 	case 2:
-		// fmt.Printf("Adding cab order to floor %d\n", floor)
-		fmt.Printf("Update 4\n")
 		e.AddCabOrderToMaster(floor)
-		// e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID].INTERNAL_BUTTON_ARRAY[floor] = true
 	}
 }
 
+// Find the most suitable target for the elevator
 func (e *Elevator) PickTarget() {
 	self := e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.UNIT_ID]
 
@@ -230,12 +208,9 @@ func (e *Elevator) PickTarget() {
 	// fmt.Printf("Targets (DOWN): %v \n ", down_calls)
 	// Sets new target to closest floor, prioritizing floors above
 
-	// TODO: Add check to see if there are new orders instead of running this loop every time
-
-	// This code can be reworked to better adhere to the DRY-principle
 	// Check floors above
 	new_target := *e.target_floor
-	
+
 	updated := false
 
 	for i := 0; i <= 3; i++ {
@@ -282,18 +257,22 @@ func (e *Elevator) PickTarget() {
 	}
 
 	// fmt.Printf("Picking target new target: %d \n", new_target)
+
+	// Run if a target has been found, and it is not the same as the previous target
 	if updated && new_target != *e.target_floor {
 		*e.target_floor = new_target
 
 		// Update value of master
 		fmt.Printf("Update 1\n")
-		
+
+		// Begin moving towards target
 		e.MoveToTarget()
 		e.AddElevatorDataToMaster()
 	}
 
 }
 
+// Check if door should be opened when visiting floor
 func (e Elevator) Visit_floor() {
 
 	// The only time the code reaches this state is during initialization
@@ -314,7 +293,7 @@ func (e Elevator) Visit_floor() {
 		// Transition to OpenDoor state
 		elevio.SetMotorDirection(elevio.MD_Stop)
 		*e.internal_state = structs.DOOR_OPEN
-		
+
 		//fmt.Printf("At DOOR_OPEN\n")
 		//*e.internal_state = structs.DOOR_OPEN
 
@@ -330,17 +309,11 @@ func (e Elevator) Visit_floor() {
 		// Get allocated orders at floor
 		target := unit.ELEVATOR_TARGETS[*e.at_floor]
 
+		// Add data to master
 		fmt.Printf("Update 7\n")
 		e.ClearOrderFromMaster(*e.at_floor, target)
 		fmt.Printf("Update 6\n")
 		e.AddElevatorDataToMaster()
-
-		
-
-		// TODO: Figure out logic when several buttons are pressed at target
-		elevio.SetButtonLamp(0, *e.at_floor, false)
-		elevio.SetButtonLamp(1, *e.at_floor, false)
-		elevio.SetButtonLamp(2, *e.at_floor, false)
 
 	}
 	// fmt.Printf("id: %d\n", e.ms_unit.UNIT_ID)
@@ -349,11 +322,10 @@ func (e Elevator) Visit_floor() {
 
 }
 
-
 func (e Elevator) OpenDoor() {
 
 	elevio.SetDoorOpenLamp(true)
-	
+
 	// Open door
 	time.Sleep(3 * time.Second)
 
@@ -365,30 +337,29 @@ func (e Elevator) OpenDoor() {
 		return
 	}
 
-	elevio.SetDoorOpenLamp(false)
-	
-	// Remove target if current floor is target floor
-	if *e.at_floor == *e.target_floor {
-		*e.target_floor = -1
-	}
-
 	// Close door
+	elevio.SetDoorOpenLamp(false)
+
+	// Return to idle
 	*e.internal_state = structs.IDLE
 	fmt.Printf("Update 8\n")
 	e.AddElevatorDataToMaster()
 
 }
 
+// Handles the obstructed state
 func (e Elevator) Obstruct() {
 	elevator_obstruct := *e.is_obstructed
 
 	if !elevator_obstruct {
+		// Begin timer when no longer obstructed
 		time.Sleep(3 * time.Second)
 		*e.internal_state = structs.DOOR_OPEN
 		e.AddElevatorDataToMaster()
 	}
 }
 
+// Sends the elevator in the right direction towards target
 func (e Elevator) MoveToTarget() {
 	// Set state to MOVING and set motor direction
 	//fmt.Printf("Moving to target\n")
@@ -404,29 +375,32 @@ func (e Elevator) MoveToTarget() {
 
 }
 
+// Handles stopping state
 func (e Elevator) Stop() {
-	// Handles stopping
 
+	// Check if stop button is pressed
 	elevator_stop := *e.is_stopped
 
+	// Stop elevator and activate lights
 	elevio.SetStopLamp(true)
 	elevio.SetMotorDirection(elevio.MD_Stop)
 
 	if !elevator_stop {
+		// Start timer when stop button is released
 		time.Sleep(3 * time.Second)
+
+		// Return to idle
 		*e.internal_state = structs.IDLE
 		e.AddElevatorDataToMaster()
 
+		// Deactivate lights
 		elevio.SetStopLamp(false)
 		elevio.SetDoorOpenLamp(false)
 		// fmt.Print(e.internal_state)
 	}
 }
 
-
-
-//TODO: Find somewhere to place in the code
-// Send new cab orders to master
+// Add cab order to data in master unit
 func (e Elevator) AddCabOrderToMaster(floor int) {
 	// Encode data
 	data := structs.HallorderMsg{
@@ -435,13 +409,12 @@ func (e Elevator) AddCabOrderToMaster(floor int) {
 	}
 	encoded_data, _ := json.Marshal(&data)
 
-	// Send data to master if master is alive
-	if e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[e.ms_unit.CURRENT_DATA.MASTER_ID].ALIVE {
-		e._message_data_to_master(encoded_data, structs.NEWCABCALL)
-	}
+	e._message_data_to_master(encoded_data, structs.NEWCABCALL)
 }
 
+// Add hall order to data in master unit
 func (e Elevator) AddHallOrderToMaster(floor int, button elevio.ButtonType) {
+	// Translate order to correct format
 	dir_bool := [2]bool{false, false}
 	if button == elevio.BT_HallUp {
 		dir_bool[0] = true
@@ -455,12 +428,12 @@ func (e Elevator) AddHallOrderToMaster(floor int, button elevio.ButtonType) {
 		Order_floor:     floor,
 		Order_direction: dir_bool,
 	}
-
 	encoded_data, _ := json.Marshal(&data)
 
 	e._message_data_to_master(encoded_data, structs.NEWHALLORDER)
 }
 
+// Update the elevator data stored in the master unit
 func (e *Elevator) AddElevatorDataToMaster() {
 	// Encode data
 	data_copy := e.ms_unit.CURRENT_DATA
@@ -475,6 +448,7 @@ func (e *Elevator) AddElevatorDataToMaster() {
 	e._message_data_to_master(encoded_data, structs.UPDATEELEVATOR)
 }
 
+// Sends message to master to remove a specified order
 func (e Elevator) ClearOrderFromMaster(floor int, dir [2]bool) {
 	// Encode data
 	data := structs.HallorderMsg{
@@ -501,6 +475,7 @@ func (e Elevator) _message_data_to_master(data []byte, msg_type structs.MessageT
 
 	// fmt.Printf("_message_data_to_master send type: %d\n", msg_type)
 	// fmt.Printf("_message_data_to_master addres: %s\n", e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[master_id].ADDRESS)
+
 	// Send message to master
 	tcp_interface.SendData(e.ms_unit.CURRENT_DATA.ELEVATOR_DATA[master_id].ADDRESS, encoded_msg)
 }

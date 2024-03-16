@@ -30,6 +30,7 @@ type SystemData struct {
 	ID int
 }
 
+// Data specific to each elevator
 type ElevatorData struct {
 	// Specifies wether the elevator is in working condition
 	ALIVE bool
@@ -44,38 +45,14 @@ type ElevatorData struct {
 	INTERNAL_STATE ElevatorState
 	// The last floor the elevator visited
 	CURRENT_FLOOR int
-	//TODO: update usage of direction
-	DIRECTION Direction // 0 for stop, 1 for up, 2 for down
+	// The direction the elevator moves in
+	DIRECTION Direction 
 }
 
-// func MakeElevatorData() (ElevatorData) {
-// 	btn_array := new([N_FLOORS]bool)
-// 	elev_targets := new([N_FLOORS][2]bool)
-// 	for i := 0; i < N_FLOORS; i++ {
-// 		btn_array[i] = false
-// 		elev_targets[i] = [2]bool{false, false}
-// 	}
-
-// 	return ElevatorData{
-// 		ALIVE: false,
-// 		ADDRESS: "",
-// 		INTERNAL_BUTTON_ARRAY: btn_array,
-// 		ELEVATOR_TARGETS: *elev_targets,
-// 		INTERNAL_STATE: 0,
-// 		CURRENT_FLOOR: -1,
-// 		DIRECTION: 0,
-// 	}
-// }
-
-const (
-	SERVER_IP_ADDRESS = "127.0.0.1"
-	PORT              = "20005"
-	FILENAME          = "home/student/Documents/AjananMiaSindre/Sanntid/project/driver-go/master-slave/master-slave.go"
-)
-
 // ###################### Single Elevator ##########################
-type ElevatorState int
 
+// Contains the states used in the elevator state machine
+type ElevatorState int
 const (
 	IDLE ElevatorState = iota
 	MOVING
@@ -84,8 +61,8 @@ const (
 	OBSTRUCTED
 )
 
+// Used for indicating direction of elevator and orders
 type Direction int
-
 const (
 	UP Direction = iota
 	DOWN
@@ -94,19 +71,23 @@ const (
 
 // ########################### Network ############################
 
+// Struct used for sending data over TCP
 type TCPMsg struct {
 	MessageType MessageType
 	Sender_id   int    `json:"sender_id"`
 	Data        []byte `json:"data"`
 }
 
+
+// Message used to find out which units are alive
 type AliveMsg struct {
 	Message string
 	address string
 	Iter    int
 }
-type MessageType int
 
+// Types of messages passed between master and slave
+type MessageType int
 const (
 	NEWCABCALL MessageType = iota
 	NEWHALLORDER
@@ -120,10 +101,9 @@ type HallorderMsg struct {
 	Order_direction [2]bool
 }
 
-// Changes timeout time for Dial. 500 milliseconds = 0.5 second
+//Used for specifying the timeout for communication via TCP
 var TCP_timeout = 500 * time.Millisecond
 
-//TODO: remove
 // ############################ For testing purposes ##################################
 
 func SystemData_to_string(data SystemData) string {
