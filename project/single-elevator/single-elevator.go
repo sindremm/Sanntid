@@ -5,7 +5,7 @@ import (
 	"fmt"
 	// "os"
 	"encoding/json"
-	"sync"
+	// "sync"
 	"time"
 
 	"Driver-go/elevio"
@@ -390,7 +390,7 @@ func (e Elevator) Stop() {
 		time.Sleep(3 * time.Second)
 
 		// Return to idle
-		*e.internal_state = structs.IDLE
+		*e.internal_state = structs.MOVING
 		e.AddElevatorDataToMaster()
 
 		// Deactivate lights

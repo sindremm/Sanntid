@@ -33,8 +33,8 @@ func main() {
 	received_id, _ := strconv.Atoi(id)
 
 	//Specifies port so that several simulators can be run on same computer
-	var init_port = 15790 + received_id
-	elevio.Init("localhost:"+strconv.Itoa(init_port), structs.N_FLOORS)
+	// var init_port = 15790 + received_id
+	elevio.Init("localhost:15657", structs.N_FLOORS)
 
 	singleelev.ResetElevator()
 
